@@ -61,3 +61,9 @@ class Recommendation(Enum):
     CONTINUE = "Continue Processing"
     REQUEST_DOCUMENTS = "Request Additional Documents"
     MANUAL_REVIEW = "Manual Review"
+class IntentType(Enum):
+    POLICY_QUERY = "Policy Query"
+    DOCUMENT_PROCESSING = "Document Processing"
+    RISK_QUERY = "Risk Query"
+    APPLICATION_STATUS = "Application Status"
+    GENERAL_QUERY = "General Query"

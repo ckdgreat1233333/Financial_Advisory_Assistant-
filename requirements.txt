@@ -1,0 +1,27 @@
+# HTTP Client
+requests>=2.34.0
+
+# Environment Variables
+python-dotenv>=1.0.1
+
+# Data Processing
+numpy>=2.5.0
+pandas>=3.0.0
+
+# Machine Learning
+scikit-learn>=1.9.0
+joblib>=1.5.0
+
+# Deep Learning / NLP
+torch>=2.13.0
+transformers>=5.13.0
+sentence-transformers>=5.6.0
+
+# Vector Database
+faiss-cpu>=1.14.0
+
+# PDF Processing
+pypdf>=5.0.0
+
+# Console Output
+rich>=15.0.0
