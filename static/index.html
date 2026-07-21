@@ -210,12 +210,12 @@ function renderLogin() {
           <button class="role-btn" data-role="officer">Underwriter</button>
         </div>
         <div class="form-group">
-          <label>Email</label>
-          <input type="email" id="login-email" placeholder="you@example.com" value="demo@user.com">
+          <label>Username</label>
+          <input type="text" id="login-username" placeholder="your username" value="admin">
         </div>
         <div class="form-group">
           <label>Password</label>
-          <input type="password" id="login-password" placeholder="Enter password">
+          <input type="password" id="login-password" placeholder="Enter password" value="admin123">
         </div>
         <button class="btn btn-primary" style="width:100%;padding:12px" id="login-btn">Sign In</button>
         <p style="text-align:center;margin-top:12px;font-size:12px;color:#64748b">New user? <a href="#" id="show-register" style="color:#10b981">Create account</a></p>
@@ -230,11 +230,11 @@ function renderLogin() {
   }));
 
   document.getElementById('login-btn').addEventListener('click', async () => {
-    const email = document.getElementById('login-email').value.trim();
+    const username = document.getElementById('login-username').value.trim();
     const password = document.getElementById('login-password').value;
-    if (!email || !password) return alert('Please enter email and password');
+    if (!username || !password) return alert('Please enter username and password');
     try {
-      const res = await api('POST','/api/auth/login', { email, password, portalType: role });
+      const res = await api('POST','/api/auth/login', { username, password, portalType: role });
       state.user = res.user;
       await loadData();
       renderApp();
@@ -260,7 +260,8 @@ function showRegister() {
         <h2>Register</h2>
         <p>Fill in your details</p>
         <div class="form-group"><label>Full Name</label><input type="text" id="reg-name" placeholder="John Doe"></div>
-        <div class="form-group"><label>Email</label><input type="email" id="reg-email" placeholder="you@example.com"></div>
+        <div class="form-group"><label>Username</label><input type="text" id="reg-username" placeholder="johndoe"></div>
+        <div class="form-group"><label>Email</label><input type="email" id="reg-email" placeholder="john@example.com"></div>
         <div class="form-group"><label>Phone</label><input type="text" id="reg-phone" placeholder="+91 9876543210"></div>
         <div class="form-group"><label>Password</label><input type="password" id="reg-password" placeholder="Min 6 characters"></div>
         <div class="role-selector" id="reg-role-selector">
@@ -281,12 +282,13 @@ function showRegister() {
 
   document.getElementById('reg-btn').addEventListener('click', async () => {
     const name = document.getElementById('reg-name').value.trim();
+    const username = document.getElementById('reg-username').value.trim();
     const email = document.getElementById('reg-email').value.trim();
     const phone = document.getElementById('reg-phone').value.trim();
     const password = document.getElementById('reg-password').value;
-    if (!name || !email || !password) return alert('Please fill all required fields');
+    if (!name || !username || !email || !password) return alert('Please fill all required fields');
     try {
-      const res = await api('POST','/api/auth/register', { fullName: name, email, phone, password, portalType: role });
+      const res = await api('POST','/api/auth/register', { username, fullName: name, email, phone, password, portalType: role });
       state.user = res.user;
       await loadData();
       renderApp();
@@ -453,46 +455,125 @@ function renderApplyForm(el) {
         </div>
         <div class="form-group">
           <label>Loan Amount (₹)</label>
-          <input type="number" id="apply-amount" value="250000" min="1000" max="10000000">
+          <input type="number" id="apply-amount" value="500000" min="10000" max="10000000">
         </div>
       </div>
       <div class="grid-2">
         <div class="form-group">
           <label>Term (months)</label>
-          <input type="number" id="apply-term" value="360" min="12" max="360">
+          <input type="number" id="apply-term" value="60" min="12" max="360">
         </div>
         <div class="form-group">
           <label>Interest Rate (%)</label>
-          <input type="number" id="apply-rate" value="6.5" step="0.1">
+          <input type="number" id="apply-rate" value="8.5" step="0.1">
         </div>
       </div>
       <div class="form-group">
         <label>Purpose (optional)</label>
         <textarea id="apply-purpose" rows="2" placeholder="Brief description..."></textarea>
       </div>
-      <button class="btn btn-primary" id="apply-submit" style="margin-top:8px">Submit Application</button>
+      <div style="border-top:1px solid #1e293b;padding-top:16px;margin-top:16px">
+        <h3 style="margin-bottom:12px">Required Documents</h3>
+        <p style="color:#f59e0b;font-size:12px;margin-bottom:12px">You must upload all three documents to submit an application.</p>
+        <div class="grid-3" style="margin-bottom:12px">
+          <div class="form-group">
+            <label>1. Salary Slip (last 3 months)</label>
+            <input type="file" id="doc-salary" accept=".pdf,.jpg,.png" style="font-size:12px;padding:8px">
+            <span id="doc-salary-status" style="font-size:11px;color:#64748b"></span>
+          </div>
+          <div class="form-group">
+            <label>2. Bank Statement (last 6 months)</label>
+            <input type="file" id="doc-bank" accept=".pdf,.jpg,.png" style="font-size:12px;padding:8px">
+            <span id="doc-bank-status" style="font-size:11px;color:#64748b"></span>
+          </div>
+          <div class="form-group">
+            <label>3. Employment Letter</label>
+            <input type="file" id="doc-employment" accept=".pdf,.jpg,.png" style="font-size:12px;padding:8px">
+            <span id="doc-employment-status" style="font-size:11px;color:#64748b"></span>
+          </div>
+        </div>
+      </div>
+      <button class="btn btn-primary" id="apply-submit" style="margin-top:8px" disabled>Upload & Submit</button>
+      <span id="apply-error" style="color:#f43f5e;font-size:12px;margin-left:12px" class="hidden"></span>
     </div>`;
+
+  function checkDocs() {
+    const salary = document.getElementById('doc-salary').files[0];
+    const bank = document.getElementById('doc-bank').files[0];
+    const emp = document.getElementById('doc-employment').files[0];
+    document.getElementById('apply-submit').disabled = !(salary && bank && emp);
+    document.getElementById('doc-salary-status').textContent = salary ? salary.name : '';
+    document.getElementById('doc-bank-status').textContent = bank ? bank.name : '';
+    document.getElementById('doc-employment-status').textContent = emp ? emp.name : '';
+  }
+
+  document.getElementById('doc-salary').addEventListener('change', checkDocs);
+  document.getElementById('doc-bank').addEventListener('change', checkDocs);
+  document.getElementById('doc-employment').addEventListener('change', checkDocs);
+
   document.getElementById('apply-submit').addEventListener('click', async () => {
+    const salaryFile = document.getElementById('doc-salary').files[0];
+    const bankFile = document.getElementById('doc-bank').files[0];
+    const empFile = document.getElementById('doc-employment').files[0];
+
+    if (!salaryFile || !bankFile || !empFile) {
+      document.getElementById('apply-error').textContent = 'Please upload all three required documents';
+      document.getElementById('apply-error').classList.remove('hidden');
+      return;
+    }
+
+    const errEl = document.getElementById('apply-error');
+    errEl.classList.add('hidden');
+    document.getElementById('apply-submit').disabled = true;
+    document.getElementById('apply-submit').textContent = 'Submitting...';
+
     const payload = {
       applicantName: state.user.name,
       applicantEmail: state.user.email,
       applicantPhone: state.user.phone || '',
       type: document.getElementById('apply-type').value,
-      amount: parseFloat(document.getElementById('apply-amount').value) || 250000,
-      termMonths: parseInt(document.getElementById('apply-term').value) || 360,
-      interestRate: parseFloat(document.getElementById('apply-rate').value) || 6.5,
-      documents: []
+      amount: parseFloat(document.getElementById('apply-amount').value) || 500000,
+      termMonths: parseInt(document.getElementById('apply-term').value) || 60,
+      interestRate: parseFloat(document.getElementById('apply-rate').value) || 8.5,
+      documents: [
+        { name: salaryFile.name, docType: 'salary_slip' },
+        { name: bankFile.name, docType: 'bank_statement' },
+        { name: empFile.name, docType: 'employment_letter' }
+      ]
     };
+
     try {
       const res = await api('POST','/api/applications', payload);
       state.apps = [res.application, ...state.apps];
-      if (res.auditLog) state.logs = [res.auditLog, ...state.logs];
+
+      // Upload each file to the documents endpoint
+      const appId = res.application.id;
+      const formData = new FormData();
+      formData.append('files', salaryFile);
+      formData.append('files', bankFile);
+      formData.append('files', empFile);
+
+      const uploadRes = await fetch(`http://127.0.0.1:8000/api/applications/${appId}/documents`, {
+        method: 'POST',
+        body: formData
+      });
+
+      if (uploadRes.ok) {
+        const upData = await uploadRes.json();
+        state.apps = state.apps.map(a => a.id === appId ? upData.application : a);
+      }
+
       state.tab = 'overview';
       showCustomerView();
       document.querySelectorAll('#cust-tabs .tab-btn').forEach(b => {
         b.classList.toggle('active', b.dataset.tab === 'overview');
       });
-    } catch(e) { alert('Failed: ' + e.message); }
+    } catch(e) {
+      errEl.textContent = 'Failed: ' + e.message;
+      errEl.classList.remove('hidden');
+      document.getElementById('apply-submit').disabled = false;
+      document.getElementById('apply-submit').textContent = 'Upload & Submit';
+    }
   });
 }
 
