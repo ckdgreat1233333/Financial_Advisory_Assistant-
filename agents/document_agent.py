@@ -1,4 +1,4 @@
-from document_processing.document_agent import DocumentProcessor
+from document_processing.document_processor import DocumentProcessor
 
 
 class DocumentAgent:

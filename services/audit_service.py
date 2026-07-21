@@ -1,6 +1,7 @@
 from datetime import datetime
 
-from models.audit import Audit
+from models.audit import AuditEntry
+from utils.enums import AuditSeverity, AgentType
 
 
 class AuditService:
@@ -20,18 +21,16 @@ class AuditService:
         actor: str,
         action: str,
         details: str,
+        severity: AuditSeverity = AuditSeverity.INFO,
+        agent_type: AgentType = None,
     ):
 
-        audit = Audit(
-
-            timestamp=datetime.now(),
-
-            actor=actor,
-
+        audit = AuditEntry(
+            agent_name=agent_type or AgentType.ORCHESTRATOR,
             action=action,
-
-            details=details,
-
+            reason=details,
+            severity=severity,
+            timestamp=datetime.now(),
         )
 
         self.logs.append(audit)

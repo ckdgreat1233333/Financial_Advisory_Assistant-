@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>LendSmart AI - Loan Processing Assistant</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:system-ui,-apple-system,sans-serif}
+body{background:#0f172a;color:#e2e8f0;min-height:100vh}
+header{background:#1e293b;border-bottom:1px solid #1e293b;padding:12px 24px;display:flex;justify-content:space-between;align-items:center}
+header h1{color:#fff;font-size:18px;display:flex;align-items:center;gap:8px}
+header h1 span{background:#4f46e5;color:#c7d2fe;font-size:10px;padding:2px 8px;border-radius:12px}
+.user-badge{display:flex;align-items:center;gap:10px;font-size:13px}
+.user-badge .dot{width:8px;height:8px;border-radius:50%}
+.dot.customer{background:#10b981}
+.dot.officer{background:#818cf8}
+.logout-btn{background:#334155;color:#94a3b8;border:1px solid #334155;padding:6px 12px;border-radius:8px;cursor:pointer;font-size:12px}
+.logout-btn:hover{background:#475569;color:#fff}
+.container{max-width:1200px;margin:0 auto;padding:20px}
+.hidden{display:none!important}
+.btn{padding:8px 16px;border-radius:8px;border:none;cursor:pointer;font-size:13px;font-weight:600;transition:all .15s}
+.btn-primary{background:#059669;color:#fff}
+.btn-primary:hover{background:#047857}
+.btn-danger{background:#dc2626;color:#fff}
+.btn-danger:hover{background:#b91c1c}
+.btn-approve{background:#059669;color:#fff}
+.btn-reject{background:#dc2626;color:#fff}
+.btn-outline{background:#334155;color:#94a3b8;border:1px solid #475569}
+.btn-outline:hover{background:#475569;color:#fff}
+.btn-indigo{background:#4f46e5;color:#fff}
+.btn-indigo:hover{background:#4338ca}
+.card{background:#1e293b;border:1px solid #1e293b;border-radius:16px;padding:20px;margin-bottom:16px}
+.card h3{font-size:14px;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px}
+.flex{display:flex}
+.flex-between{display:flex;justify-content:space-between;align-items:center}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.gap-2{gap:8px}
+.gap-3{gap:12px}
+.mt-2{margin-top:8px}
+.mt-3{margin-top:12px}
+.mt-4{margin-top:16px}
+.mb-2{margin-bottom:8px}
+.text-xs{font-size:12px}
+.text-sm{font-size:13px}
+.text-lg{font-size:18px}
+.text-slate{color:#94a3b8}
+.text-white{color:#fff}
+.text-emerald{color:#10b981}
+.text-rose{color:#f43f5e}
+.text-amber{color:#f59e0b}
+.text-indigo{color:#818cf8}
+.font-bold{font-weight:700}
+.font-mono{font-family:'Courier New',monospace}
+.truncate{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.badge{font-size:10px;padding:2px 8px;border-radius:12px;font-weight:600;display:inline-block}
+.badge-success{background:rgba(16,185,129,.15);color:#10b981;border:1px solid rgba(16,185,129,.2)}
+.badge-warning{background:rgba(245,158,11,.15);color:#f59e0b;border:1px solid rgba(245,158,11,.2)}
+.badge-danger{background:rgba(244,63,94,.15);color:#f43f5e;border:1px solid rgba(244,63,94,.2)}
+.badge-info{background:rgba(129,140,248,.15);color:#818cf8;border:1px solid rgba(129,140,248,.2)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;padding:12px;color:#64748b;font-weight:600;border-bottom:1px solid #1e293b}
+td{padding:12px;border-bottom:1px solid #1e293b}
+tr:hover{background:rgba(30,41,59,.5)}
+input,select,textarea{background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:10px 12px;color:#fff;font-size:13px;width:100%;outline:none}
+input:focus,select:focus,textarea:focus{border-color:#059669}
+label{font-size:12px;color:#94a3b8;display:block;margin-bottom:4px}
+.progress-bar{height:6px;background:#0f172a;border-radius:4px;overflow:hidden;margin-top:6px}
+.progress-fill{height:100%;border-radius:4px;transition:width .3s}
+.progress-fill.green{background:#10b981}
+.progress-fill.red{background:#f43f5e}
+.progress-fill.amber{background:#f59e0b}
+/* Auth page */
+.auth-container{max-width:400px;margin:80px auto;text-align:center}
+.auth-card{background:#1e293b;border:1px solid #1e293b;border-radius:16px;padding:32px;text-align:left;margin-top:20px}
+.auth-card .logo{background:#059669;width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;font-size:20px}
+.auth-card h2{text-align:center;font-size:20px;margin-bottom:4px}
+.auth-card p{text-align:center;color:#94a3b8;font-size:13px;margin-bottom:20px}
+.role-selector{display:flex;gap:8px;margin-bottom:16px}
+.role-btn{flex:1;padding:10px;border-radius:10px;border:1px solid #1e293b;background:#0f172a;color:#94a3b8;cursor:pointer;font-size:13px;text-align:center;transition:all .15s}
+.role-btn.active{background:rgba(5,150,105,.15);border-color:#059669;color:#10b981;font-weight:600}
+.form-group{margin-bottom:14px}
+.form-group input{background:#0f172a}
+/* Stats */
+.stat-card{background:#1e293b;border:1px solid #1e293b;padding:16px;border-radius:16px}
+.stat-card .num{font-size:24px;font-weight:700}
+.stat-card .label{font-size:11px;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px}
+/* Tabs */
+.tabs{display:flex;gap:4px;padding:4px;background:#0f172a;border-radius:10px;border:1px solid #1e293b;margin-bottom:16px;flex-wrap:wrap}
+.tab-btn{padding:8px 14px;border-radius:8px;border:none;background:transparent;color:#94a3b8;cursor:pointer;font-size:12px;font-weight:600;transition:all .15s}
+.tab-btn.active{background:#4f46e5;color:#fff}
+.tab-btn:hover:not(.active){background:#1e293b;color:#e2e8f0}
+/* Modal */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;z-index:100}
+.modal{background:#1e293b;border:1px solid #1e293b;border-radius:16px;padding:24px;max-width:500px;width:90%;max-height:80vh;overflow-y:auto}
+.modal h3{font-size:16px;margin-bottom:12px}
+/* Detail */
+.detail-grid{display:grid;grid-template-columns:2fr 1fr;gap:16px}
+.detail-field{margin-bottom:8px}
+.detail-field .label{font-size:11px;color:#64748b}
+.detail-field .value{font-size:13px;color:#fff;font-weight:500}
+.metric-box{background:#0f172a;padding:12px;border-radius:10px;border:1px solid #1e293b;text-align:center}
+.metric-box .val{font-size:20px;font-weight:700}
+.metric-box .lbl{font-size:10px;color:#64748b;text-transform:uppercase}
+@media(max-width:768px){
+.grid-2,.grid-3,.grid-4{grid-template-columns:1fr}
+.detail-grid{grid-template-columns:1fr}
+}
+/* Sidebar layout */
+.sidebar-layout{display:grid;grid-template-columns:240px 1fr;gap:20px}
+.sidebar{display:flex;flex-direction:column;gap:4px}
+.sidebar-btn{padding:10px 14px;border-radius:10px;border:none;background:transparent;color:#94a3b8;cursor:pointer;font-size:13px;text-align:left;transition:all .15s}
+.sidebar-btn:hover{background:rgba(30,41,59,.5);color:#e2e8f0}
+.sidebar-btn.active{background:#059669;color:#fff;font-weight:600}
+@media(max-width:768px){.sidebar-layout{grid-template-columns:1fr}}
+/* Loading */
+.spinner{width:32px;height:32px;border:3px solid #1e293b;border-top-color:#059669;border-radius:50%;animation:spin .6s linear infinite;margin:40px auto}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+const API = 'http://127.0.0.1:8000';
+let state = { user: null, apps: [], logs: [], policyDocs: [], view: 'login', tab: 'overview', officerTab: 'queue', selectedAppId: null, selectedLog: null, search: '', faqs: [] };
+
+function $(sel) { return document.querySelector(sel); }
+
+async function api(method, path, body) {
+  const opts = { method, headers: {} };
+  if (body && !(body instanceof FormData)) {
+    opts.headers['Content-Type'] = 'application/json';
+    opts.body = JSON.stringify(body);
+  } else if (body instanceof FormData) {
+    opts.body = body;
+  }
+  const res = await fetch(API + path, opts);
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+async function loadData() {
+  try {
+    const [a, l, p, f] = await Promise.all([
+      api('GET','/api/applications'),
+      api('GET','/api/audit-logs'),
+      api('GET','/api/policy-documents'),
+      api('GET','/api/faq')
+    ]);
+    state.apps = a.applications || [];
+    state.logs = l.logs || [];
+    state.policyDocs = p.policyDocuments || [];
+    state.faqs = f.faqs || [];
+  } catch(e) { console.warn('Load error:', e); }
+}
+
+function formatCurrency(n) {
+  return new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0}).format(n);
+}
+
+function esc(str) {
+  const d = document.createElement('div');
+  d.textContent = str || '';
+  return d.innerHTML;
+}
+
+// ─── Login ───
+function renderLogin() {
+  document.getElementById('app').innerHTML = `
+    <div class="auth-container">
+      <div style="background:#059669;width:48px;height:48px;border-radius:14px;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;font-size:24px;color:#fff;font-weight:700">LS</div>
+      <h1 style="font-size:22px;margin-bottom:4px">LendSmart AI</h1>
+      <p style="color:#94a3b8;font-size:13px;margin-bottom:24px">Secure Smarter Underwriting</p>
+      <div class="auth-card">
+        <h2>Welcome</h2>
+        <p>Sign in to the portal</p>
+        <div class="role-selector" id="role-selector">
+          <button class="role-btn active" data-role="customer">Customer</button>
+          <button class="role-btn" data-role="officer">Underwriter</button>
+        </div>
+        <div class="form-group">
+          <label>Email</label>
+          <input type="email" id="login-email" placeholder="you@example.com" value="admin@lendsmart.com">
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" id="login-password" placeholder="Enter password" value="password">
+        </div>
+        <button class="btn btn-primary" style="width:100%;padding:12px" id="login-btn">Sign In</button>
+        <p style="text-align:center;margin-top:12px;font-size:12px;color:#64748b">
+          Demo: use any email/password
+        </p>
+      </div>
+    </div>`;
+
+  const roleBtns = document.querySelectorAll('.role-btn');
+  let role = 'customer';
+  roleBtns.forEach(b => b.addEventListener('click', () => {
+    roleBtns.forEach(x => x.classList.remove('active'));
+    b.classList.add('active');
+    role = b.dataset.role;
+  }));
+
+  document.getElementById('login-btn').addEventListener('click', async () => {
+    const email = document.getElementById('login-email').value || 'demo@user.com';
+    try {
+      const res = await api('POST','/api/auth/login', { email, password: 'pass', portalType: role });
+      state.user = res.user;
+      await loadData();
+      renderApp();
+    } catch(e) {
+      // Offline fallback - create user locally
+      state.user = { role, email, name: email.split('@')[0].replace(/\./g,' ').replace(/\b\w/g,l=>l.toUpperCase()), phone: '' };
+      await loadData();
+      renderApp();
+    }
+  });
+}
+
+// ─── Main App ───
+function renderApp() {
+  const u = state.user;
+  document.getElementById('app').innerHTML = `
+    <header>
+      <h1>LendSmart <span>AI</span></h1>
+      <div class="user-badge">
+        <span class="dot ${u.role}"></span>
+        <span>${esc(u.name)}</span>
+        <span style="font-size:11px;color:#64748b">${u.role === 'officer' ? 'Underwriter' : 'Customer'}</span>
+        <button class="logout-btn" id="logout-btn">Logout</button>
+      </div>
+    </header>
+    <div class="container">
+      ${u.role === 'customer' ? renderCustomerTabs() : renderOfficerTabs()}
+      <div id="main-content"></div>
+    </div>`;
+
+  document.getElementById('logout-btn').addEventListener('click', () => {
+    state.user = null; renderLogin();
+  });
+
+  if (u.role === 'customer') {
+    setupCustomerTabs();
+    showCustomerView();
+  } else {
+    setupOfficerTabs();
+    showOfficerView();
+  }
+}
+
+// ─── Customer ───
+function renderCustomerTabs() {
+  const tabs = [
+    { id:'overview', label:'My Applications' },
+    { id:'apply', label:'Apply for Loan' },
+    { id:'help', label:'Help' },
+    { id:'settings', label:'Settings' }
+  ];
+  return `<div class="tabs" id="cust-tabs">${tabs.map(t =>
+    `<button class="tab-btn ${t.id === state.tab ? 'active' : ''}" data-tab="${t.id}">${t.label}</button>`
+  ).join('')}</div>`;
+}
+
+function setupCustomerTabs() {
+  document.querySelectorAll('#cust-tabs .tab-btn').forEach(b =>
+    b.addEventListener('click', () => {
+      state.tab = b.dataset.tab;
+      document.querySelectorAll('#cust-tabs .tab-btn').forEach(x => x.classList.remove('active'));
+      b.classList.add('active');
+      showCustomerView();
+    })
+  );
+}
+
+function showCustomerView() {
+  const mc = document.getElementById('main-content');
+  switch(state.tab) {
+    case 'overview': renderCustomerOverview(mc); break;
+    case 'apply': renderApplyForm(mc); break;
+    case 'help': renderHelp(mc); break;
+    case 'settings': renderSettings(mc); break;
+  }
+}
+
+function renderCustomerOverview(el) {
+  const myApps = state.apps;
+  const active = myApps.filter(a => a.status === 'under_review' || a.status === 'pending_docs');
+  const approved = myApps.filter(a => a.status === 'approved');
+  const totalCredit = approved.reduce((s,a) => s + a.amount, 0);
+
+  el.innerHTML = `
+    <div class="grid-3" style="margin-bottom:20px">
+      <div class="stat-card"><div class="label">Active Applications</div><div class="num">${active.length}</div></div>
+      <div class="stat-card"><div class="label">Approved Loans</div><div class="num">${approved.length}</div></div>
+      <div class="stat-card"><div class="label">Total Credit</div><div class="num">${formatCurrency(totalCredit)}</div></div>
+    </div>
+    <h3 style="font-size:14px;margin-bottom:12px;color:#fff">Active Applications</h3>
+    ${active.length === 0 ? '<p style="color:#64748b;font-size:13px">No active applications.</p>' :
+      active.map(a => renderAppCard(a)).join('')
+    }
+    <h3 style="font-size:14px;margin:20px 0 12px;color:#fff">History</h3>
+    <div class="card" style="padding:0;overflow:hidden">
+      <table>
+        <thead><tr><th>ID</th><th>Type</th><th>Amount</th><th>Date</th><th>Status</th></tr></thead>
+        <tbody>
+          ${myApps.filter(a => a.status === 'approved' || a.status === 'rejected').map(a => `
+            <tr>
+              <td class="font-mono" style="color:#64748b">${esc(a.id)}</td>
+              <td>${esc(a.type)}</td>
+              <td>${formatCurrency(a.amount)}</td>
+              <td style="color:#64748b">${esc(a.submittedDate)}</td>
+              <td><span class="badge ${a.status === 'approved' ? 'badge-success' : 'badge-danger'}">${a.status}</span></td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+function renderAppCard(a) {
+  return `<div class="card">
+    <div class="flex-between">
+      <div>
+        <span style="font-size:11px;color:#64748b;font-family:monospace">${esc(a.id)}</span>
+        <span class="badge badge-info" style="margin-left:6px">${esc(a.type)}</span>
+        <h4 style="font-size:16px;margin-top:4px">${formatCurrency(a.amount)}</h4>
+      </div>
+      <span class="badge ${a.status === 'under_review' ? 'badge-warning' : 'badge-danger'}">${a.status === 'under_review' ? 'Under Review' : 'Pending Docs'}</span>
+    </div>
+    <div class="progress-bar"><div class="progress-fill green" style="width:${a.progress}%"></div></div>
+    ${a.reasoningNotes ? `<p style="font-size:12px;color:#94a3b8;margin-top:8px">${esc(a.reasoningNotes)}</p>` : ''}
+    ${a.agentConsensus ? `
+      <div class="grid-3" style="margin-top:12px">
+        ${['documentValidation','policyCompliance','riskEvaluation'].map(k => {
+          const v = a.agentConsensus[k];
+          if (!v) return '';
+          return `<div style="background:#0f172a;padding:10px;border-radius:10px;font-size:11px">
+            <div style="display:flex;justify-content:space-between">
+              <span style="color:#818cf8">${k.replace(/([A-Z])/g,' $1')}</span>
+              <span style="color:${v.status === 'pass' ? '#10b981' : v.status === 'warn' ? '#f59e0b' : '#f43f5e'}">${v.score}%</span>
+            </div>
+            <p style="color:#94a3b8;margin-top:4px;font-size:10px">${esc(v.details)}</p>
+          </div>`;
+        }).join('')}
+      </div>` : ''}
+    ${a.documents && a.documents.length ? `
+      <div style="margin-top:12px;padding-top:12px;border-top:1px solid #1e293b">
+        <span style="font-size:11px;color:#64748b">Documents</span>
+        <div class="flex" style="gap:8px;flex-wrap:wrap;margin-top:6px">
+          ${a.documents.map(d => `
+            <span style="font-size:11px;background:#0f172a;padding:6px 10px;border-radius:8px;border:1px solid #1e293b">
+              ${esc(d.name)}
+              <span class="badge ${d.status === 'valid' ? 'badge-success' : d.status === 'mismatch' ? 'badge-danger' : 'badge-warning'}" style="margin-left:4px">${d.status}</span>
+            </span>
+          `).join('')}
+        </div>
+      </div>` : ''}
+  </div>`;
+}
+
+// ─── Apply Form ───
+function renderApplyForm(el) {
+  el.innerHTML = `
+    <div class="card">
+      <h3>Apply for a New Loan</h3>
+      <div class="grid-2" style="margin-bottom:14px">
+        <div class="form-group">
+          <label>Loan Type</label>
+          <select id="apply-type">
+            <option value="home">Home Loan</option>
+            <option value="auto">Auto Loan</option>
+            <option value="personal">Personal Loan</option>
+            <option value="business">Business Loan</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Loan Amount ($)</label>
+          <input type="number" id="apply-amount" value="250000" min="1000" max="10000000">
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="form-group">
+          <label>Term (months)</label>
+          <input type="number" id="apply-term" value="360" min="12" max="360">
+        </div>
+        <div class="form-group">
+          <label>Interest Rate (%)</label>
+          <input type="number" id="apply-rate" value="6.5" step="0.1">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Purpose (optional)</label>
+        <textarea id="apply-purpose" rows="2" placeholder="Brief description..."></textarea>
+      </div>
+      <button class="btn btn-primary" id="apply-submit" style="margin-top:8px">Submit Application</button>
+    </div>`;
+
+  document.getElementById('apply-submit').addEventListener('click', async () => {
+    const payload = {
+      applicantName: state.user.name,
+      applicantEmail: state.user.email,
+      applicantPhone: state.user.phone || '',
+      type: document.getElementById('apply-type').value,
+      amount: parseFloat(document.getElementById('apply-amount').value) || 250000,
+      termMonths: parseInt(document.getElementById('apply-term').value) || 360,
+      interestRate: parseFloat(document.getElementById('apply-rate').value) || 6.5,
+      documents: []
+    };
+    try {
+      const res = await api('POST','/api/applications', payload);
+      state.apps = [res.application, ...state.apps];
+      if (res.auditLog) state.logs = [res.auditLog, ...state.logs];
+      state.tab = 'overview';
+      showCustomerView();
+      document.querySelectorAll('#cust-tabs .tab-btn').forEach(b => {
+        b.classList.toggle('active', b.dataset.tab === 'overview');
+      });
+    } catch(e) { alert('Failed to create application: ' + e.message); }
+  });
+}
+
+// ─── Help ───
+function renderHelp(el) {
+  const q = state.faqs;
+  el.innerHTML = `
+    <div class="card">
+      <h3>Help Center</h3>
+      <div class="form-group">
+        <input type="text" id="faq-search" placeholder="Search FAQs..." style="max-width:500px">
+      </div>
+      <div id="faq-list">
+        ${q.map((f,i) => `
+          <div style="border-bottom:1px solid #1e293b;padding:12px 0">
+            <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer" data-faq="${i}">
+              <span style="font-size:13px">${esc(f.question)}</span>
+              <span style="color:#64748b;font-size:18px" class="faq-arrow">+</span>
+            </div>
+            <div class="faq-answer hidden" style="font-size:12px;color:#94a3b8;margin-top:8px;line-height:1.5">${esc(f.answer)}</div>
+          </div>
+        `).join('')}
+      </div>
+    </div>`;
+
+  document.querySelectorAll('[data-faq]').forEach(el => {
+    el.addEventListener('click', () => {
+      const ans = el.nextElementSibling;
+      ans.classList.toggle('hidden');
+      el.querySelector('.faq-arrow').textContent = ans.classList.contains('hidden') ? '+' : '−';
+    });
+  });
+
+  document.getElementById('faq-search').addEventListener('input', (e) => {
+    const q = e.target.value.toLowerCase();
+    document.querySelectorAll('[data-faq]').forEach(el => {
+      const text = el.textContent.toLowerCase();
+      el.parentElement.style.display = text.includes(q) ? '' : 'none';
+    });
+  });
+}
+
+// ─── Settings ───
+function renderSettings(el) {
+  el.innerHTML = `
+    <div class="card" style="max-width:600px">
+      <h3>Profile Settings</h3>
+      <div class="form-group"><label>Name</label><input type="text" id="set-name" value="${esc(state.user.name)}"></div>
+      <div class="form-group"><label>Email</label><input type="email" id="set-email" value="${esc(state.user.email)}"></div>
+      <div class="form-group"><label>Phone</label><input type="text" id="set-phone" value="${esc(state.user.phone || '')}"></div>
+      <button class="btn btn-primary" id="set-save">Save</button>
+      <span id="set-msg" class="hidden" style="margin-left:12px;font-size:13px;color:#10b981">Saved!</span>
+    </div>`;
+
+  document.getElementById('set-save').addEventListener('click', async () => {
+    const data = {
+      name: document.getElementById('set-name').value,
+      email: document.getElementById('set-email').value,
+      phone: document.getElementById('set-phone').value
+    };
+    try { await api('PATCH','/api/users/profile', data); } catch(e) {}
+    state.user = { ...state.user, ...data };
+    document.getElementById('set-msg').classList.remove('hidden');
+    setTimeout(() => document.getElementById('set-msg').classList.add('hidden'), 2000);
+  });
+}
+
+// ═══════ OFFICER ═══════
+function renderOfficerTabs() {
+  const tabs = [
+    { id:'queue', label:'Priority Queue' },
+    { id:'logs', label:'Compliance Logs' },
+    { id:'admin', label:'Admin' }
+  ];
+  return `<div class="tabs" id="off-tabs">${tabs.map(t =>
+    `<button class="tab-btn ${t.id === state.officerTab ? 'active' : ''}" data-tab="${t.id}">${t.label}</button>`
+  ).join('')}</div>`;
+}
+
+function setupOfficerTabs() {
+  document.querySelectorAll('#off-tabs .tab-btn').forEach(b =>
+    b.addEventListener('click', () => {
+      state.officerTab = b.dataset.tab;
+      document.querySelectorAll('#off-tabs .tab-btn').forEach(x => x.classList.remove('active'));
+      b.classList.add('active');
+      showOfficerView();
+    })
+  );
+}
+
+function showOfficerView() {
+  const mc = document.getElementById('main-content');
+  switch(state.officerTab) {
+    case 'queue': renderOfficerQueue(mc); break;
+    case 'logs': renderOfficerLogs(mc); break;
+    case 'admin': renderOfficerAdmin(mc); break;
+  }
+}
+
+function renderOfficerQueue(el) {
+  const sel = state.apps.find(a => a.id === state.selectedAppId) || state.apps[0];
+  if (sel) state.selectedAppId = sel.id;
+
+  const filtered = state.apps.filter(a =>
+    !state.search || a.applicantName.toLowerCase().includes(state.search.toLowerCase()) || a.id.toLowerCase().includes(state.search.toLowerCase())
+  );
+
+  el.innerHTML = `
+    <div class="sidebar-layout">
+      <div>
+        <div class="form-group"><input type="text" id="queue-search" placeholder="Search name or ID..." value="${esc(state.search)}"></div>
+        <div style="display:flex;flex-direction:column;gap:6px;max-height:500px;overflow-y:auto">
+          ${filtered.map(a => `
+            <div class="card" style="cursor:pointer;padding:14px;${state.selectedAppId === a.id ? 'border-color:#4f46e5' : ''}" data-app="${a.id}">
+              <div class="flex-between"><span style="font-size:11px;color:#64748b;font-family:monospace">${esc(a.id)}</span><span class="badge ${a.riskScore < 30 ? 'badge-success' : a.riskScore < 60 ? 'badge-warning' : 'badge-danger'}">Risk ${a.riskScore}</span></div>
+              <div style="font-size:13px;font-weight:600;margin-top:4px">${esc(a.applicantName)}</div>
+              <div style="font-size:13px;margin-top:2px">${formatCurrency(a.amount)}</div>
+              <span class="badge ${a.status === 'approved' ? 'badge-success' : a.status === 'rejected' ? 'badge-danger' : 'badge-warning'}" style="margin-top:4px">${a.status}</span>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+      <div>
+        ${sel ? renderOfficerDetail(sel) : '<p style="color:#64748b;text-align:center;padding:40px">Select an application</p>'}
+      </div>
+    </div>`;
+
+  document.getElementById('queue-search').addEventListener('input', (e) => {
+    state.search = e.target.value;
+    renderOfficerQueue(el);
+  });
+
+  document.querySelectorAll('[data-app]').forEach(el2 => {
+    el2.addEventListener('click', () => {
+      state.selectedAppId = el2.dataset.app;
+      renderOfficerQueue(el);
+    });
+  });
+}
+
+function renderOfficerDetail(a) {
+  return `
+    <div class="card">
+      <div class="flex-between">
+        <div>
+          <span style="font-size:11px;color:#64748b;font-family:monospace">${esc(a.id)}</span>
+          <span class="badge badge-info" style="margin-left:6px">${esc(a.type)}</span>
+          <h3 style="font-size:16px;margin-top:4px;color:#fff">${esc(a.applicantName)}</h3>
+          <p style="font-size:12px;color:#64748b">${esc(a.applicantEmail)}</p>
+        </div>
+        <div class="flex" style="gap:8px">
+          <button class="btn btn-approve" id="btn-approve" ${a.status === 'approved' ? 'disabled style="opacity:.4"' : ''}>Approve</button>
+          <button class="btn btn-reject" id="btn-reject" ${a.status === 'rejected' ? 'disabled style="opacity:.4"' : ''}>Reject</button>
+        </div>
+      </div>
+      <div style="margin-top:16px">
+        <span class="badge ${a.complianceStatus === 'compliant' ? 'badge-success' : a.complianceStatus === 'warning' ? 'badge-warning' : 'badge-danger'}">${a.complianceStatus}</span>
+        <span style="margin-left:8px;font-size:13px">Risk: ${a.riskScore}/100</span>
+        <span style="margin-left:8px;font-size:13px">Default Rate: ${a.defaultRate}%</span>
+      </div>
+      <div class="progress-bar"><div class="progress-fill green" style="width:${a.progress}%"></div></div>
+    </div>
+
+    ${a.agentConsensus ? `
+      <div class="grid-3" style="margin-bottom:16px">
+        ${['documentValidation','policyCompliance','riskEvaluation'].map(k => {
+          const v = a.agentConsensus[k];
+          if (!v) return '';
+          return `<div class="card" style="padding:14px;text-align:center">
+            <div style="font-size:10px;color:#818cf8;text-transform:uppercase;letter-spacing:.3px">${k.replace(/([A-Z])/g,' $1')}</div>
+            <div style="font-size:24px;font-weight:700;margin:6px 0;color:${v.status === 'pass' ? '#10b981' : v.status === 'warn' ? '#f59e0b' : '#f43f5e'}">${v.score}%</div>
+            <div style="font-size:11px;color:#94a3b8">${esc(v.details)}</div>
+          </div>`;
+        }).join('')}
+      </div>` : ''}
+
+    ${a.documents && a.documents.length ? `
+      <div class="card">
+        <h3>Documents</h3>
+        <table>
+          <thead><tr><th>Name</th><th>Type</th><th>Status</th><th>Action</th></tr></thead>
+          <tbody>
+            ${a.documents.map(d => `
+              <tr>
+                <td>${esc(d.name)}</td>
+                <td>${esc(d.type)}</td>
+                <td><span class="badge ${d.status === 'valid' ? 'badge-success' : d.status === 'mismatch' ? 'badge-danger' : 'badge-warning'}">${d.status}</span></td>
+                <td>
+                  <select class="doc-status" data-app="${a.id}" data-doc="${d.id}" style="width:auto;font-size:11px;padding:4px 8px">
+                    <option value="valid" ${d.status === 'valid' ? 'selected' : ''}>Valid</option>
+                    <option value="mismatch" ${d.status === 'mismatch' ? 'selected' : ''}>Mismatch</option>
+                    <option value="pending" ${d.status === 'pending' ? 'selected' : ''}>Pending</option>
+                  </select>
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>` : ''}
+
+    ${a.similarityHeatmap ? `
+      <div class="card">
+        <h3>Document Similarity Heatmap</h3>
+        <div style="overflow-x:auto">
+          <div style="display:grid;grid-template-columns:110px repeat(${a.similarityHeatmap.labels.length}, 60px);gap:2px;font-size:10px">
+            <div></div>
+            ${a.similarityHeatmap.labels.map(l => `<div style="color:#64748b;text-align:center;font-size:8px;overflow:hidden;text-overflow:ellipsis">${l.replace('.pdf','')}</div>`).join('')}
+            ${a.similarityHeatmap.matrix.map((row,ri) => `
+              <div style="color:#64748b;font-size:8px;overflow:hidden;text-overflow:ellipsis">${a.similarityHeatmap.labels[ri].replace('.pdf','')}</div>
+              ${row.map(c => `<div style="background:${c > 0.7 ? '#4f46e5' : c > 0.3 ? '#312e81' : '#0f172a'};color:#fff;text-align:center;padding:6px 0;border-radius:4px;font-weight:600">${Math.round(c*100)}%</div>`).join('')}
+            `).join('')}
+          </div>
+        </div>
+      </div>` : ''}
+  `;
+
+  // Attach event listeners after render
+  setTimeout(() => {
+    const appBtn = document.getElementById('btn-approve');
+    const rejBtn = document.getElementById('btn-reject');
+    if (appBtn) appBtn.addEventListener('click', () => handleOfficerAction(a.id, 'approve'));
+    if (rejBtn) rejBtn.addEventListener('click', () => handleOfficerAction(a.id, 'reject'));
+
+    document.querySelectorAll('.doc-status').forEach(sel => {
+      sel.addEventListener('change', async () => {
+        const appId = sel.dataset.app;
+        const docId = sel.dataset.doc;
+        const status = sel.value;
+        try {
+          const updated = await api('PATCH', `/api/applications/${appId}/documents/${docId}`, { status });
+          state.apps = state.apps.map(a => a.id === appId ? updated : a);
+        } catch(e) { console.warn(e); }
+      });
+    });
+  }, 0);
+}
+
+async function handleOfficerAction(id, action) {
+  try {
+    const payload = { actor: state.user.name || 'Officer', reason: action === 'approve' ? 'Approved' : 'Rejected by officer' };
+    const res = await api('PATCH', `/api/applications/${id}/${action}`, payload);
+    state.apps = state.apps.map(a => a.id === id ? res.application : a);
+    if (res.auditLog) state.logs = [res.auditLog, ...state.logs];
+    renderOfficerQueue(document.getElementById('main-content'));
+  } catch(e) { alert('Action failed: ' + e.message); }
+}
+
+// ─── Officer Logs ───
+function renderOfficerLogs(el) {
+  el.innerHTML = `
+    <div class="card">
+      <div class="flex-between" style="margin-bottom:12px">
+        <h3 style="margin:0">Compliance Audit Ledger</h3>
+        <span class="badge badge-success">Secured Pipeline Active</span>
+      </div>
+      <div style="max-height:500px;overflow-y:auto">
+        ${state.logs.map(l => `
+          <div style="background:#0f172a;padding:14px;border-radius:10px;border:1px solid #1e293b;margin-bottom:8px;cursor:pointer" class="log-entry" data-log-id="${l.id}">
+            <div class="flex-between">
+              <div class="flex" style="gap:8px;align-items:center">
+                <span style="font-size:12px;font-weight:600">${esc(l.actor)}</span>
+                <span class="badge badge-info" style="font-size:9px">${esc(l.eventType)}</span>
+                <span class="badge ${l.riskLevel === 'high' ? 'badge-danger' : l.riskLevel === 'medium' ? 'badge-warning' : 'badge-success'}">${l.riskLevel}</span>
+              </div>
+              <span style="font-size:11px;color:#64748b;font-family:monospace">${esc(l.timestamp)}</span>
+            </div>
+            <p style="font-size:12px;color:#94a3b8;margin-top:6px">${esc(l.details)}</p>
+          </div>
+        `).join('')}
+      </div>
+    </div>`;
+}
+
+// ─── Officer Admin ───
+function renderOfficerAdmin(el) {
+  el.innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+      <div class="card">
+        <h3>Pipeline Health</h3>
+        <div class="grid-3">
+          <div class="metric-box"><div class="val" style="color:#10b981">450</div><div class="lbl">OCR Parse Rate<br><small>docs/min</small></div></div>
+          <div class="metric-box"><div class="val" style="color:#818cf8">124</div><div class="lbl">Token Latency<br><small>ms avg</small></div></div>
+          <div class="metric-box"><div class="val" style="color:#10b981">99.8%</div><div class="lbl">RAG Cache<br><small>hit rate</small></div></div>
+        </div>
+        <h3 style="margin-top:20px">Risk Dashboard</h3>
+        <div class="grid-4">
+          <div class="metric-box"><div class="val" style="color:#10b981">2.41%</div><div class="lbl">Default Rate</div></div>
+          <div class="metric-box"><div class="val" style="color:#f43f5e">12.5%</div><div class="lbl">High Risk</div></div>
+          <div class="metric-box"><div class="val" style="color:#818cf8">14.2m</div><div class="lbl">Avg Time</div></div>
+          <div class="metric-box"><div class="val">84.2%</div><div class="lbl">Auto Pass</div></div>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Policy Documents</h3>
+        <div style="max-height:300px;overflow-y:auto;margin-bottom:12px">
+          ${state.policyDocs.map(d => `
+            <div style="background:#0f172a;padding:10px;border-radius:8px;border:1px solid #1e293b;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center">
+              <div>
+                <span style="font-size:13px;font-weight:600">${esc(d.name)}</span>
+                <span class="badge badge-info" style="margin-left:4px">${esc(d.version)}</span>
+                <div style="font-size:10px;color:#64748b;margin-top:2px">${d.activeRules} rules · ${esc(d.uploadDate)}</div>
+              </div>
+              <button class="btn btn-danger" style="padding:4px 8px;font-size:10px" data-del-doc="${d.id}">Delete</button>
+            </div>
+          `).join('')}
+        </div>
+        <div style="border-top:1px solid #1e293b;padding-top:12px">
+          <h4 style="font-size:13px;margin-bottom:8px;color:#fff">Add New Policy</h4>
+          <div class="flex" style="gap:8px">
+            <input type="text" id="new-doc-name" placeholder="Policy name" style="flex:1">
+            <input type="text" id="new-doc-ver" placeholder="v1.0" style="width:80px" value="v1.0">
+            <button class="btn btn-indigo" id="add-doc-btn">Add</button>
+          </div>
+        </div>
+      </div>
+    </div>`;
+
+  document.getElementById('add-doc-btn').addEventListener('click', async () => {
+    const name = document.getElementById('new-doc-name').value;
+    const ver = document.getElementById('new-doc-ver').value;
+    if (!name) return;
+    try {
+      const res = await api('POST','/api/policy-documents', { name, version: ver });
+      state.policyDocs = [res.policyDocument, ...state.policyDocs];
+      if (res.auditLog) state.logs = [res.auditLog, ...state.logs];
+      renderOfficerAdmin(el);
+    } catch(e) { alert('Failed: ' + e.message); }
+  });
+
+  document.querySelectorAll('[data-del-doc]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const id = btn.dataset.delDoc;
+      try {
+        const res = await api('DELETE', `/api/policy-documents/${id}`);
+        state.policyDocs = state.policyDocs.filter(d => d.id !== id);
+        if (res.auditLog) state.logs = [res.auditLog, ...state.logs];
+        renderOfficerAdmin(el);
+      } catch(e) { console.warn(e); }
+    });
+  });
+}
+
+// ─── Start ───
+renderLogin();
+</script>
+</body>
+</html>
