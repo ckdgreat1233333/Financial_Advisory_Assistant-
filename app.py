@@ -8,6 +8,7 @@ import uuid
 import os
 from datetime import datetime, timezone
 import shutil
+import logging
 
 from agents.orchestrator import LoanProcessingOrchestrator
 from models.application import LoanApplication
@@ -20,6 +21,8 @@ from utils.enums import (
 )
 from services.audit_service import AuditService
 from services.policy_service import PolicyService
+from services.customer_service import CustomerService
+from services.llm_service import LLMService
 
 app = FastAPI(
     title="Intelligent Loan Processing Assistant",
@@ -29,8 +32,8 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
-    allow_credentials=True,
+    allow_origins=["*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -38,6 +41,8 @@ app.add_middleware(
 orchestrator = LoanProcessingOrchestrator()
 audit_service = AuditService()
 policy_service = PolicyService()
+llm_service = LLMService()
+customer_service = CustomerService(policy=policy_service, llm=llm_service)
 
 # In-memory stores
 applications_store: dict[str, LoanApplication] = {}
@@ -776,18 +781,80 @@ async def pipeline_health():
     return {"ocrParseRate": "450 docs / min", "tokenLatencyMs": 124, "ragVectorCacheHitRate": 99.81}
 
 # ═══════════════════════════════════════════════
-# CHAT (AI ASSISTANT - existing Gemini proxy forwarded from frontend)
+# CHAT (AI ASSISTANT - LLM-powered with RAG context)
 # ═══════════════════════════════════════════════
+
+import logging
+logger = logging.getLogger("loan_assistant")
+
+POLICY_RULES = {
+    "salary minimum": "Minimum monthly salary is ₹30,000 (Section 3 - Income Requirements)",
+    "loan amount": "Loan amount should not exceed 20 times monthly salary (Section 5 - Loan Amount Rules)",
+    "documents": "Mandatory documents: Salary Slip, Bank Statement, Employment Letter, PAN Card, Aadhaar Card (Section 2)",
+    "employment": "At least 12 months with current employer required (Section 4 - Employment Requirements)",
+    "age": "Applicant must be between 21 and 60 years of age (Section 1 - Eligibility)",
+    "risk": "Risk levels: Low (all docs submitted, income verified), Medium (minor mismatches), High (missing docs or false info) - Section 6",
+}
 
 @app.post("/api/chat")
 async def chat(req: ChatRequest):
+    try:
+        llm_available = llm_service.health_check()
+        if llm_available:
+            response = customer_service.answer(question=req.message, mode="friendly")
+            policy_context = policy_service.retrieve_context(req.message, top_k=3)
+            grounding_doc = "Home Loan Policy - General"
+            grounding_clause = "Retrieved policy sections"
+            grounding_text = policy_context[:500] if len(policy_context) > 500 else policy_context
+            return {
+                "text": response,
+                "reasoning": f"Retrieved policy context via RAG. Generated response using LLM.",
+                "policyGrounding": {
+                    "documentName": grounding_doc,
+                    "clause": grounding_clause,
+                    "extractedText": grounding_text
+                }
+            }
+    except Exception as e:
+        logger.warning(f"LLM/RAG chat failed, using rule fallback: {e}")
+
+    # Smart rule-based fallback - respond with actual policy rules
+    msg_lower = req.message.lower()
+    matched_rules = []
+    for keyword, rule in POLICY_RULES.items():
+        if keyword in msg_lower:
+            matched_rules.append(rule)
+
+    if matched_rules:
+        response_text = "Based on our lending policy:\n\n" + "\n\n".join(f"• {r}" for r in matched_rules)
+        if len(matched_rules) == 1:
+            response_text += "\n\nWould you like more details on any other policy area?"
+        reasoning = f"Rule-based match: {', '.join(k for k in POLICY_RULES if k in msg_lower)}"
+        grounding_doc = "Home Loan Policy"
+        grounding_clause = "Matched policy rules"
+        grounding_text = "\n".join(matched_rules)
+    else:
+        policy_context = policy_service.retrieve_context(req.message, top_k=3)
+        if policy_context.strip():
+            response_text = f"Based on our lending policy:\n\n{policy_context[:800]}"
+            reasoning = "Retrieved policy text from policy document."
+            grounding_doc = "Home Loan Policy"
+            grounding_clause = "Full text retrieval"
+            grounding_text = policy_context[:500]
+        else:
+            response_text = "I can help with policy questions about salary requirements, loan amounts, required documents, employment criteria, age eligibility, and risk assessment. Please ask about a specific policy area."
+            reasoning = "No specific rule matched. Returning general guidance."
+            grounding_doc = "Home Loan Policy"
+            grounding_clause = "General"
+            grounding_text = "Home Loan Policy rules covering eligibility, documents, income, employment, loan amounts, risk, and manual review."
+
     return {
-        "text": f"[AI Assistant] Your query: '{req.message}'. Under 'Doc Policy v4.2 Subsection B' regarding income discrepancy margins, any variance exceeding 10.0% between bank statements and tax filings triggers a verification request.",
-        "reasoning": "Applied rule-based compliance match using policy context.",
+        "text": response_text,
+        "reasoning": reasoning,
         "policyGrounding": {
-            "documentName": "Income Discrepancy Margin Clause 12.2b",
-            "clause": "Doc Policy v4.2 - Subsection B",
-            "extractedText": "Any discrepancy between monthly bank deposits and IRS tax returns exceeding 10.0% of total variance must flag a secondary Document Verification request."
+            "documentName": grounding_doc,
+            "clause": grounding_clause,
+            "extractedText": grounding_text
         }
     }
 

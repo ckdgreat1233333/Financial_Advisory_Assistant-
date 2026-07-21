@@ -71,7 +71,6 @@ label{font-size:12px;color:#94a3b8;display:block;margin-bottom:4px}
 .progress-fill.green{background:#10b981}
 .progress-fill.red{background:#f43f5e}
 .progress-fill.amber{background:#f59e0b}
-/* Auth page */
 .auth-container{max-width:400px;margin:80px auto;text-align:center}
 .auth-card{background:#1e293b;border:1px solid #1e293b;border-radius:16px;padding:32px;text-align:left;margin-top:20px}
 .auth-card .logo{background:#059669;width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;font-size:20px}
@@ -82,20 +81,16 @@ label{font-size:12px;color:#94a3b8;display:block;margin-bottom:4px}
 .role-btn.active{background:rgba(5,150,105,.15);border-color:#059669;color:#10b981;font-weight:600}
 .form-group{margin-bottom:14px}
 .form-group input{background:#0f172a}
-/* Stats */
 .stat-card{background:#1e293b;border:1px solid #1e293b;padding:16px;border-radius:16px}
 .stat-card .num{font-size:24px;font-weight:700}
 .stat-card .label{font-size:11px;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px}
-/* Tabs */
 .tabs{display:flex;gap:4px;padding:4px;background:#0f172a;border-radius:10px;border:1px solid #1e293b;margin-bottom:16px;flex-wrap:wrap}
 .tab-btn{padding:8px 14px;border-radius:8px;border:none;background:transparent;color:#94a3b8;cursor:pointer;font-size:12px;font-weight:600;transition:all .15s}
 .tab-btn.active{background:#4f46e5;color:#fff}
 .tab-btn:hover:not(.active){background:#1e293b;color:#e2e8f0}
-/* Modal */
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;z-index:100}
 .modal{background:#1e293b;border:1px solid #1e293b;border-radius:16px;padding:24px;max-width:500px;width:90%;max-height:80vh;overflow-y:auto}
 .modal h3{font-size:16px;margin-bottom:12px}
-/* Detail */
 .detail-grid{display:grid;grid-template-columns:2fr 1fr;gap:16px}
 .detail-field{margin-bottom:8px}
 .detail-field .label{font-size:11px;color:#64748b}
@@ -107,14 +102,49 @@ label{font-size:12px;color:#94a3b8;display:block;margin-bottom:4px}
 .grid-2,.grid-3,.grid-4{grid-template-columns:1fr}
 .detail-grid{grid-template-columns:1fr}
 }
-/* Sidebar layout */
 .sidebar-layout{display:grid;grid-template-columns:240px 1fr;gap:20px}
 .sidebar{display:flex;flex-direction:column;gap:4px}
 .sidebar-btn{padding:10px 14px;border-radius:10px;border:none;background:transparent;color:#94a3b8;cursor:pointer;font-size:13px;text-align:left;transition:all .15s}
 .sidebar-btn:hover{background:rgba(30,41,59,.5);color:#e2e8f0}
 .sidebar-btn.active{background:#059669;color:#fff;font-weight:600}
 @media(max-width:768px){.sidebar-layout{grid-template-columns:1fr}}
-/* Loading */
+.chat-container{display:grid;grid-template-columns:2fr 1fr;gap:20px;height:calc(100vh - 220px);min-height:400px}
+.chat-pane{display:flex;flex-direction:column;background:#1e293b;border:1px solid #1e2a3a;border-radius:16px;overflow:hidden}
+.chat-header{background:#0f172a;border-bottom:1px solid #1e2a3a;padding:12px 16px;display:flex;align-items:center;justify-content:space-between}
+.chat-header .ai-badge{background:#1a1b3a;border:1px solid #4f46e5;color:#818cf8;padding:2px 6px;border-radius:6px;font-size:9px;font-family:monospace}
+.chat-messages{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:16px}
+.chat-msg{display:flex;gap:10px;max-width:85%;align-items:flex-start}
+.chat-msg.user{flex-direction:row-reverse;margin-left:auto}
+.chat-msg .avatar{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+.chat-msg .avatar.user{background:#059669;color:#fff}
+.chat-msg .avatar.ai{background:#1a1b3a;border:1px solid #4f46e5;color:#818cf8}
+.chat-msg .bubble{padding:10px 14px;border-radius:10px;font-size:12px;line-height:1.6;word-break:break-word}
+.chat-msg.user .bubble{background:#1e2a3a;color:#f1f5f9;border:1px solid #334155}
+.chat-msg.ai .bubble{background:#0f172a;color:#e2e8f0;border:1px solid #1e2a3a}
+.chat-msg .meta{display:flex;justify-content:space-between;align-items:center;margin-top:4px;padding:0 4px}
+.chat-msg .timestamp{font-size:9px;color:#64748b}
+.chat-msg .ground-link{font-size:9px;color:#818cf8;cursor:pointer}
+.chat-input{padding:10px;background:#0f172a;border-top:1px solid #1e2a3a;display:flex;gap:8px}
+.chat-input input{flex:1;background:#1e2a3a;border:1px solid #334155;border-radius:10px;padding:10px 14px;color:#fff;font-size:12px;outline:none}
+.chat-input input:focus{border-color:#4f46e5}
+.chat-input button{padding:10px;border-radius:10px;border:none;background:#4f46e5;color:#fff;cursor:pointer;font-size:14px;width:40px;flex-shrink:0}
+.chat-input button:disabled{background:#1e2a3a;color:#64748b}
+.chat-sidebar{background:#1e293b;border:1px solid #1e2a3a;border-radius:16px;padding:16px;display:flex;flex-direction:column}
+.chat-sidebar h4{font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+.chat-sidebar .clause-box{background:#0f172a;border:1px solid #4f46e5;border-radius:10px;padding:14px;position:relative;margin-top:8px}
+.chat-sidebar .clause-tag{position:absolute;right:8px;top:-8px;background:#1a1b3a;border:1px solid #4f46e5;color:#818cf8;padding:1px 6px;border-radius:4px;font-size:9px;font-weight:600}
+.chat-sidebar .clause-name{font-size:12px;color:#e2e8f0;font-weight:600;font-family:monospace}
+.chat-sidebar .clause-doc{font-size:11px;color:#94a3b8;margin:4px 0}
+.chat-sidebar .clause-text{font-size:11px;color:#94a3b8;font-style:italic;background:#0f172a;padding:6px;border-radius:6px;border:1px solid #1e2a3a;margin:6px 0}
+.chat-sidebar .clause-auth{font-size:10px;color:#10b981}
+.reasoning-toggle summary{display:flex;align-items:center;gap:4px;cursor:pointer;padding:4px 0;font-size:10px;color:#64748b}
+.reasoning-toggle summary:hover{color:#818cf8}
+.reasoning-text{padding:8px;font-size:10px;color:#94a3b8;font-family:monospace;line-height:1.5;border-top:1px solid #1e2a3a;margin-top:2px}
+@keyframes bounce{0%,100%{opacity:0.4}50%{opacity:1}}
+.loading-dot{width:6px;height:6px;background:#818cf8;border-radius:50%;display:inline-block;animation:bounce .8s infinite}
+.loading-dot:nth-child(2){animation-delay:.15s}
+.loading-dot:nth-child(3){animation-delay:.3s}
+@media(max-width:768px){.chat-container{grid-template-columns:1fr}}
 .spinner{width:32px;height:32px;border:3px solid #1e293b;border-top-color:#059669;border-radius:50%;animation:spin .6s linear infinite;margin:40px auto}
 @keyframes spin{to{transform:rotate(360deg)}}
 </style>
@@ -123,9 +153,7 @@ label{font-size:12px;color:#94a3b8;display:block;margin-bottom:4px}
 <div id="app"></div>
 <script>
 const API = 'http://127.0.0.1:8000';
-let state = { user: null, apps: [], logs: [], policyDocs: [], view: 'login', tab: 'overview', officerTab: 'queue', selectedAppId: null, selectedLog: null, search: '', faqs: [] };
-
-function $(sel) { return document.querySelector(sel); }
+let state = { user: null, apps: [], logs: [], policyDocs: [], view: 'login', tab: 'overview', officerTab: 'queue', selectedAppId: null, search: '', faqs: [], chatMessages: null, chatLoading: false, activeGrounding: null, adminData: null };
 
 async function api(method, path, body) {
   const opts = { method, headers: {} };
@@ -142,21 +170,23 @@ async function api(method, path, body) {
 
 async function loadData() {
   try {
-    const [a, l, p, f] = await Promise.all([
+    const [a, l, p, f, admin] = await Promise.all([
       api('GET','/api/applications'),
       api('GET','/api/audit-logs'),
       api('GET','/api/policy-documents'),
-      api('GET','/api/faq')
+      api('GET','/api/faq'),
+      api('GET','/api/analytics/risk-dashboard').catch(() => null)
     ]);
     state.apps = a.applications || [];
     state.logs = l.logs || [];
     state.policyDocs = p.policyDocuments || [];
     state.faqs = f.faqs || [];
+    state.adminData = admin;
   } catch(e) { console.warn('Load error:', e); }
 }
 
 function formatCurrency(n) {
-  return new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0}).format(n);
+  return '₹' + Number(n).toLocaleString('en-IN');
 }
 
 function esc(str) {
@@ -173,48 +203,101 @@ function renderLogin() {
       <h1 style="font-size:22px;margin-bottom:4px">LendSmart AI</h1>
       <p style="color:#94a3b8;font-size:13px;margin-bottom:24px">Secure Smarter Underwriting</p>
       <div class="auth-card">
-        <h2>Welcome</h2>
-        <p>Sign in to the portal</p>
+        <h2>Sign In</h2>
+        <p>Enter your credentials</p>
         <div class="role-selector" id="role-selector">
           <button class="role-btn active" data-role="customer">Customer</button>
           <button class="role-btn" data-role="officer">Underwriter</button>
         </div>
         <div class="form-group">
           <label>Email</label>
-          <input type="email" id="login-email" placeholder="you@example.com" value="admin@lendsmart.com">
+          <input type="email" id="login-email" placeholder="you@example.com" value="demo@user.com">
         </div>
         <div class="form-group">
           <label>Password</label>
-          <input type="password" id="login-password" placeholder="Enter password" value="password">
+          <input type="password" id="login-password" placeholder="Enter password">
         </div>
         <button class="btn btn-primary" style="width:100%;padding:12px" id="login-btn">Sign In</button>
-        <p style="text-align:center;margin-top:12px;font-size:12px;color:#64748b">
-          Demo: use any email/password
-        </p>
+        <p style="text-align:center;margin-top:12px;font-size:12px;color:#64748b">New user? <a href="#" id="show-register" style="color:#10b981">Create account</a></p>
       </div>
     </div>`;
 
-  const roleBtns = document.querySelectorAll('.role-btn');
   let role = 'customer';
-  roleBtns.forEach(b => b.addEventListener('click', () => {
-    roleBtns.forEach(x => x.classList.remove('active'));
+  document.querySelectorAll('.role-btn').forEach(b => b.addEventListener('click', () => {
+    document.querySelectorAll('.role-btn').forEach(x => x.classList.remove('active'));
     b.classList.add('active');
     role = b.dataset.role;
   }));
 
   document.getElementById('login-btn').addEventListener('click', async () => {
-    const email = document.getElementById('login-email').value || 'demo@user.com';
+    const email = document.getElementById('login-email').value.trim();
+    const password = document.getElementById('login-password').value;
+    if (!email || !password) return alert('Please enter email and password');
     try {
-      const res = await api('POST','/api/auth/login', { email, password: 'pass', portalType: role });
+      const res = await api('POST','/api/auth/login', { email, password, portalType: role });
       state.user = res.user;
       await loadData();
       renderApp();
     } catch(e) {
-      // Offline fallback - create user locally
-      state.user = { role, email, name: email.split('@')[0].replace(/\./g,' ').replace(/\b\w/g,l=>l.toUpperCase()), phone: '' };
+      alert('Login failed: ' + e.message);
+    }
+  });
+
+  document.getElementById('show-register').addEventListener('click', (e) => {
+    e.preventDefault();
+    showRegister();
+  });
+}
+
+function showRegister() {
+  const appEl = document.getElementById('app');
+  appEl.innerHTML = `
+    <div class="auth-container">
+      <div style="background:#059669;width:48px;height:48px;border-radius:14px;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;font-size:24px;color:#fff;font-weight:700">LS</div>
+      <h1 style="font-size:22px;margin-bottom:4px">LendSmart AI</h1>
+      <p style="color:#94a3b8;font-size:13px;margin-bottom:24px">Create your account</p>
+      <div class="auth-card">
+        <h2>Register</h2>
+        <p>Fill in your details</p>
+        <div class="form-group"><label>Full Name</label><input type="text" id="reg-name" placeholder="John Doe"></div>
+        <div class="form-group"><label>Email</label><input type="email" id="reg-email" placeholder="you@example.com"></div>
+        <div class="form-group"><label>Phone</label><input type="text" id="reg-phone" placeholder="+91 9876543210"></div>
+        <div class="form-group"><label>Password</label><input type="password" id="reg-password" placeholder="Min 6 characters"></div>
+        <div class="role-selector" id="reg-role-selector">
+          <button class="role-btn active" data-role="customer">Customer</button>
+          <button class="role-btn" data-role="officer">Underwriter</button>
+        </div>
+        <button class="btn btn-primary" style="width:100%;padding:12px" id="reg-btn">Create Account</button>
+        <p style="text-align:center;margin-top:12px;font-size:12px;color:#64748b">Already have an account? <a href="#" id="show-login" style="color:#10b981">Sign in</a></p>
+      </div>
+    </div>`;
+
+  let role = 'customer';
+  document.querySelectorAll('#reg-role-selector .role-btn').forEach(b => b.addEventListener('click', () => {
+    document.querySelectorAll('#reg-role-selector .role-btn').forEach(x => x.classList.remove('active'));
+    b.classList.add('active');
+    role = b.dataset.role;
+  }));
+
+  document.getElementById('reg-btn').addEventListener('click', async () => {
+    const name = document.getElementById('reg-name').value.trim();
+    const email = document.getElementById('reg-email').value.trim();
+    const phone = document.getElementById('reg-phone').value.trim();
+    const password = document.getElementById('reg-password').value;
+    if (!name || !email || !password) return alert('Please fill all required fields');
+    try {
+      const res = await api('POST','/api/auth/register', { fullName: name, email, phone, password, portalType: role });
+      state.user = res.user;
       await loadData();
       renderApp();
+    } catch(e) {
+      alert('Registration failed: ' + e.message);
     }
+  });
+
+  document.getElementById('show-login').addEventListener('click', (e) => {
+    e.preventDefault();
+    renderLogin();
   });
 }
 
@@ -235,18 +318,9 @@ function renderApp() {
       ${u.role === 'customer' ? renderCustomerTabs() : renderOfficerTabs()}
       <div id="main-content"></div>
     </div>`;
-
-  document.getElementById('logout-btn').addEventListener('click', () => {
-    state.user = null; renderLogin();
-  });
-
-  if (u.role === 'customer') {
-    setupCustomerTabs();
-    showCustomerView();
-  } else {
-    setupOfficerTabs();
-    showOfficerView();
-  }
+  document.getElementById('logout-btn').addEventListener('click', () => { state.user = null; renderLogin(); });
+  if (u.role === 'customer') { setupCustomerTabs(); showCustomerView(); }
+  else { setupOfficerTabs(); showOfficerView(); }
 }
 
 // ─── Customer ───
@@ -255,6 +329,7 @@ function renderCustomerTabs() {
     { id:'overview', label:'My Applications' },
     { id:'apply', label:'Apply for Loan' },
     { id:'help', label:'Help' },
+    { id:'chat', label:'AI Assistant' },
     { id:'settings', label:'Settings' }
   ];
   return `<div class="tabs" id="cust-tabs">${tabs.map(t =>
@@ -277,6 +352,7 @@ function showCustomerView() {
   const mc = document.getElementById('main-content');
   switch(state.tab) {
     case 'overview': renderCustomerOverview(mc); break;
+    case 'chat': renderCustomerChat(mc); break;
     case 'apply': renderApplyForm(mc); break;
     case 'help': renderHelp(mc); break;
     case 'settings': renderSettings(mc); break;
@@ -284,38 +360,39 @@ function showCustomerView() {
 }
 
 function renderCustomerOverview(el) {
-  const myApps = state.apps;
-  const active = myApps.filter(a => a.status === 'under_review' || a.status === 'pending_docs');
-  const approved = myApps.filter(a => a.status === 'approved');
-  const totalCredit = approved.reduce((s,a) => s + a.amount, 0);
-
-  el.innerHTML = `
-    <div class="grid-3" style="margin-bottom:20px">
-      <div class="stat-card"><div class="label">Active Applications</div><div class="num">${active.length}</div></div>
-      <div class="stat-card"><div class="label">Approved Loans</div><div class="num">${approved.length}</div></div>
-      <div class="stat-card"><div class="label">Total Credit</div><div class="num">${formatCurrency(totalCredit)}</div></div>
-    </div>
-    <h3 style="font-size:14px;margin-bottom:12px;color:#fff">Active Applications</h3>
-    ${active.length === 0 ? '<p style="color:#64748b;font-size:13px">No active applications.</p>' :
-      active.map(a => renderAppCard(a)).join('')
-    }
-    <h3 style="font-size:14px;margin:20px 0 12px;color:#fff">History</h3>
-    <div class="card" style="padding:0;overflow:hidden">
-      <table>
-        <thead><tr><th>ID</th><th>Type</th><th>Amount</th><th>Date</th><th>Status</th></tr></thead>
-        <tbody>
-          ${myApps.filter(a => a.status === 'approved' || a.status === 'rejected').map(a => `
-            <tr>
-              <td class="font-mono" style="color:#64748b">${esc(a.id)}</td>
-              <td>${esc(a.type)}</td>
-              <td>${formatCurrency(a.amount)}</td>
-              <td style="color:#64748b">${esc(a.submittedDate)}</td>
-              <td><span class="badge ${a.status === 'approved' ? 'badge-success' : 'badge-danger'}">${a.status}</span></td>
-            </tr>
-          `).join('')}
-        </tbody>
-      </table>
-    </div>`;
+  el.innerHTML = `<div class="spinner"></div>`;
+  loadData().then(() => {
+    const myApps = state.apps;
+    const active = myApps.filter(a => a.status === 'under_review' || a.status === 'pending_docs');
+    const approved = myApps.filter(a => a.status === 'approved');
+    const totalCredit = approved.reduce((s,a) => s + (a.amount || 0), 0);
+    el.innerHTML = `
+      <div class="grid-3" style="margin-bottom:20px">
+        <div class="stat-card"><div class="label">Active Applications</div><div class="num">${active.length}</div></div>
+        <div class="stat-card"><div class="label">Approved Loans</div><div class="num">${approved.length}</div></div>
+        <div class="stat-card"><div class="label">Total Credit</div><div class="num">${formatCurrency(totalCredit)}</div></div>
+      </div>
+      <h3 style="font-size:14px;margin-bottom:12px;color:#fff">Active Applications</h3>
+      ${active.length === 0 ? '<p style="color:#64748b;font-size:13px">No active applications.</p>' :
+        active.map(a => renderAppCard(a)).join('')}
+      <h3 style="font-size:14px;margin:20px 0 12px;color:#fff">History</h3>
+      <div class="card" style="padding:0;overflow:hidden">
+        <table>
+          <thead><tr><th>ID</th><th>Type</th><th>Amount</th><th>Date</th><th>Status</th></tr></thead>
+          <tbody>
+            ${myApps.filter(a => a.status === 'approved' || a.status === 'rejected').map(a => `
+              <tr>
+                <td class="font-mono" style="color:#64748b">${esc(a.id)}</td>
+                <td>${esc(a.type)}</td>
+                <td>${formatCurrency(a.amount)}</td>
+                <td style="color:#64748b">${esc(a.submittedDate)}</td>
+                <td><span class="badge ${a.status === 'approved' ? 'badge-success' : 'badge-danger'}">${a.status}</span></td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>`;
+  });
 }
 
 function renderAppCard(a) {
@@ -328,7 +405,7 @@ function renderAppCard(a) {
       </div>
       <span class="badge ${a.status === 'under_review' ? 'badge-warning' : 'badge-danger'}">${a.status === 'under_review' ? 'Under Review' : 'Pending Docs'}</span>
     </div>
-    <div class="progress-bar"><div class="progress-fill green" style="width:${a.progress}%"></div></div>
+    <div class="progress-bar"><div class="progress-fill green" style="width:${a.progress || 0}%"></div></div>
     ${a.reasoningNotes ? `<p style="font-size:12px;color:#94a3b8;margin-top:8px">${esc(a.reasoningNotes)}</p>` : ''}
     ${a.agentConsensus ? `
       <div class="grid-3" style="margin-top:12px">
@@ -375,7 +452,7 @@ function renderApplyForm(el) {
           </select>
         </div>
         <div class="form-group">
-          <label>Loan Amount ($)</label>
+          <label>Loan Amount (₹)</label>
           <input type="number" id="apply-amount" value="250000" min="1000" max="10000000">
         </div>
       </div>
@@ -395,7 +472,6 @@ function renderApplyForm(el) {
       </div>
       <button class="btn btn-primary" id="apply-submit" style="margin-top:8px">Submit Application</button>
     </div>`;
-
   document.getElementById('apply-submit').addEventListener('click', async () => {
     const payload = {
       applicantName: state.user.name,
@@ -416,7 +492,7 @@ function renderApplyForm(el) {
       document.querySelectorAll('#cust-tabs .tab-btn').forEach(b => {
         b.classList.toggle('active', b.dataset.tab === 'overview');
       });
-    } catch(e) { alert('Failed to create application: ' + e.message); }
+    } catch(e) { alert('Failed: ' + e.message); }
   });
 }
 
@@ -441,20 +517,17 @@ function renderHelp(el) {
         `).join('')}
       </div>
     </div>`;
-
-  document.querySelectorAll('[data-faq]').forEach(el => {
-    el.addEventListener('click', () => {
-      const ans = el.nextElementSibling;
+  document.querySelectorAll('[data-faq]').forEach(el2 => {
+    el2.addEventListener('click', () => {
+      const ans = el2.nextElementSibling;
       ans.classList.toggle('hidden');
-      el.querySelector('.faq-arrow').textContent = ans.classList.contains('hidden') ? '+' : '−';
+      el2.querySelector('.faq-arrow').textContent = ans.classList.contains('hidden') ? '+' : '\u2212';
     });
   });
-
   document.getElementById('faq-search').addEventListener('input', (e) => {
     const q = e.target.value.toLowerCase();
-    document.querySelectorAll('[data-faq]').forEach(el => {
-      const text = el.textContent.toLowerCase();
-      el.parentElement.style.display = text.includes(q) ? '' : 'none';
+    document.querySelectorAll('[data-faq]').forEach(el2 => {
+      el2.parentElement.style.display = el2.textContent.toLowerCase().includes(q) ? '' : 'none';
     });
   });
 }
@@ -470,7 +543,6 @@ function renderSettings(el) {
       <button class="btn btn-primary" id="set-save">Save</button>
       <span id="set-msg" class="hidden" style="margin-left:12px;font-size:13px;color:#10b981">Saved!</span>
     </div>`;
-
   document.getElementById('set-save').addEventListener('click', async () => {
     const data = {
       name: document.getElementById('set-name').value,
@@ -481,6 +553,142 @@ function renderSettings(el) {
     state.user = { ...state.user, ...data };
     document.getElementById('set-msg').classList.remove('hidden');
     setTimeout(() => document.getElementById('set-msg').classList.add('hidden'), 2000);
+  });
+}
+
+// ─── AI Chat ───
+function renderCustomerChat(el) {
+  if (!state.chatMessages) {
+    state.chatMessages = [];
+    state.chatLoading = false;
+    state.activeGrounding = null;
+  }
+
+  function buildMsg(msg) {
+    const isUser = msg.sender === 'user';
+    return `<div class="chat-msg ${isUser ? 'user' : 'ai'}">
+      <div class="avatar ${isUser ? 'user' : 'ai'}">${isUser ? '&#9993;' : '&#9881;'}</div>
+      <div>
+        <div class="bubble">${esc(msg.text)}</div>
+        ${msg.sender === 'assistant' && msg.reasoning ? `
+          <details class="reasoning-toggle">
+            <summary><span>&#9654; AI Reasoning Chain</span></summary>
+            <div class="reasoning-text">${esc(msg.reasoning)}</div>
+          </details>` : ''}
+        <div class="meta">
+          <span class="timestamp">${msg.timestamp}</span>
+          ${msg.policyGrounding ? `<span class="ground-link" data-ground="${msg.id}">View grounded clause &#8599;</span>` : ''}
+        </div>
+      </div>
+    </div>`;
+  }
+
+  function renderSidebar() {
+    const g = state.activeGrounding;
+    if (!g) return '<p style="color:#64748b;font-size:11px;font-style:italic">Ask a question to see policy grounding.</p>';
+    return `
+      <div class="clause-box">
+        <span class="clause-tag">Policy Clause</span>
+        <div class="clause-name">${esc(g.clause)}</div>
+        <div class="clause-doc">${esc(g.documentName)}</div>
+        <div class="clause-text">"${esc(g.extractedText)}"</div>
+        <div class="clause-auth">&#10003; Authorized reference policy source</div>
+      </div>`;
+  }
+
+  el.innerHTML = `
+    <div class="chat-container">
+      <div class="chat-pane">
+        <div class="chat-header">
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="background:#1a1b3a;border:1px solid #4f46e5;color:#818cf8;padding:6px;border-radius:8px;font-size:16px">&#9881;</div>
+            <div>
+              <div style="font-weight:600;font-size:13px;color:#fff">LendSmart AI Assistant</div>
+              <div style="font-size:10px;color:#94a3b8"><span style="display:inline-block;width:8px;height:8px;background:#10b981;border-radius:50%;margin-right:4px"></span>Grounded by Underwriting Policies</div>
+            </div>
+          </div>
+          <span class="ai-badge">LLM</span>
+        </div>
+        <div class="chat-messages" id="chat-msg-container">
+          ${state.chatMessages.map(buildMsg).join('')}
+          ${state.chatLoading ? `<div class="chat-msg ai"><div class="avatar ai">&#9881;</div><div class="bubble" style="display:flex;align-items:center;gap:4px"><span class="loading-dot"></span><span class="loading-dot"></span><span class="loading-dot"></span>&nbsp; Processing...</div></div>` : ''}
+          ${state.chatMessages.length === 0 ? '<p style="color:#64748b;font-size:12px;text-align:center;margin-top:40px">Ask about loan policies, eligibility, or your application status.</p>' : ''}
+          <div id="chat-end"></div>
+        </div>
+        <form class="chat-input" id="chat-form">
+          <input type="text" id="chat-input-field" placeholder="Ask about loan policies..." autocomplete="off">
+          <button type="submit" id="chat-send-btn" disabled>&#10148;</button>
+        </form>
+      </div>
+      <div class="chat-sidebar">
+        <h4>Policy Grounding</h4>
+        <p style="font-size:10px;color:#64748b;margin-bottom:12px">Real-time reference from underwriting guidelines.</p>
+        <div style="flex:1">${renderSidebar()}</div>
+      </div>
+    </div>`;
+
+  document.querySelectorAll('.ground-link').forEach(link => {
+    link.addEventListener('click', () => {
+      const id = link.dataset.ground;
+      const msg = state.chatMessages.find(m => m.id === id);
+      if (msg && msg.policyGrounding) {
+        state.activeGrounding = msg.policyGrounding;
+        renderCustomerChat(el);
+      }
+    });
+  });
+
+  const end = document.getElementById('chat-end');
+  if (end) end.scrollIntoView();
+
+  document.getElementById('chat-input-field').addEventListener('input', function() {
+    document.getElementById('chat-send-btn').disabled = !this.value.trim();
+  });
+
+  document.getElementById('chat-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const input = document.getElementById('chat-input-field');
+    const msg = input.value.trim();
+    if (!msg || state.chatLoading) return;
+    input.value = '';
+    document.getElementById('chat-send-btn').disabled = true;
+
+    state.chatMessages.push({
+      id: 'msg-user-' + Date.now(),
+      sender: 'user',
+      text: msg,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    });
+    state.chatLoading = true;
+    renderCustomerChat(el);
+
+    try {
+      const res = await api('POST', '/api/chat', {
+        message: msg,
+        history: state.chatMessages.map(m => ({ role: m.sender === 'user' ? 'user' : 'model', text: m.text })),
+        applicationsContext: state.apps
+      });
+      state.chatMessages.push({
+        id: 'msg-ai-' + Date.now(),
+        sender: 'assistant',
+        text: res.text || 'I analyzed your query. Please contact your loan officer for further details.',
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        reasoning: res.reasoning || '',
+        policyGrounding: res.policyGrounding || null
+      });
+      if (res.policyGrounding) state.activeGrounding = res.policyGrounding;
+    } catch(err) {
+      state.chatMessages.push({
+        id: 'msg-ai-err-' + Date.now(),
+        sender: 'assistant',
+        text: 'Sorry, I encountered an error. Please try again.',
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        reasoning: null,
+        policyGrounding: null
+      });
+    }
+    state.chatLoading = false;
+    renderCustomerChat(el);
   });
 }
 
@@ -517,42 +725,40 @@ function showOfficerView() {
 }
 
 function renderOfficerQueue(el) {
-  const sel = state.apps.find(a => a.id === state.selectedAppId) || state.apps[0];
-  if (sel) state.selectedAppId = sel.id;
-
-  const filtered = state.apps.filter(a =>
-    !state.search || a.applicantName.toLowerCase().includes(state.search.toLowerCase()) || a.id.toLowerCase().includes(state.search.toLowerCase())
-  );
-
-  el.innerHTML = `
-    <div class="sidebar-layout">
-      <div>
-        <div class="form-group"><input type="text" id="queue-search" placeholder="Search name or ID..." value="${esc(state.search)}"></div>
-        <div style="display:flex;flex-direction:column;gap:6px;max-height:500px;overflow-y:auto">
-          ${filtered.map(a => `
-            <div class="card" style="cursor:pointer;padding:14px;${state.selectedAppId === a.id ? 'border-color:#4f46e5' : ''}" data-app="${a.id}">
-              <div class="flex-between"><span style="font-size:11px;color:#64748b;font-family:monospace">${esc(a.id)}</span><span class="badge ${a.riskScore < 30 ? 'badge-success' : a.riskScore < 60 ? 'badge-warning' : 'badge-danger'}">Risk ${a.riskScore}</span></div>
-              <div style="font-size:13px;font-weight:600;margin-top:4px">${esc(a.applicantName)}</div>
-              <div style="font-size:13px;margin-top:2px">${formatCurrency(a.amount)}</div>
-              <span class="badge ${a.status === 'approved' ? 'badge-success' : a.status === 'rejected' ? 'badge-danger' : 'badge-warning'}" style="margin-top:4px">${a.status}</span>
-            </div>
-          `).join('')}
+  loadData().then(() => {
+    const sel = state.apps.find(a => a.id === state.selectedAppId) || state.apps[0];
+    if (sel) state.selectedAppId = sel.id;
+    const filtered = state.apps.filter(a =>
+      !state.search || a.applicantName?.toLowerCase().includes(state.search.toLowerCase()) || a.id?.toLowerCase().includes(state.search.toLowerCase())
+    );
+    el.innerHTML = `
+      <div class="sidebar-layout">
+        <div>
+          <div class="form-group"><input type="text" id="queue-search" placeholder="Search name or ID..." value="${esc(state.search)}"></div>
+          <div style="display:flex;flex-direction:column;gap:6px;max-height:500px;overflow-y:auto">
+            ${filtered.map(a => `
+              <div class="card" style="cursor:pointer;padding:14px;${state.selectedAppId === a.id ? 'border-color:#4f46e5' : ''}" data-app="${a.id}">
+                <div class="flex-between"><span style="font-size:11px;color:#64748b;font-family:monospace">${esc(a.id)}</span><span class="badge ${(a.riskScore || 0) < 30 ? 'badge-success' : (a.riskScore || 0) < 60 ? 'badge-warning' : 'badge-danger'}">Risk ${a.riskScore || 0}</span></div>
+                <div style="font-size:13px;font-weight:600;margin-top:4px">${esc(a.applicantName || '')}</div>
+                <div style="font-size:13px;margin-top:2px">${formatCurrency(a.amount)}</div>
+                <span class="badge ${a.status === 'approved' ? 'badge-success' : a.status === 'rejected' ? 'badge-danger' : 'badge-warning'}" style="margin-top:4px">${a.status}</span>
+              </div>
+            `).join('')}
+          </div>
         </div>
-      </div>
-      <div>
-        ${sel ? renderOfficerDetail(sel) : '<p style="color:#64748b;text-align:center;padding:40px">Select an application</p>'}
-      </div>
-    </div>`;
-
-  document.getElementById('queue-search').addEventListener('input', (e) => {
-    state.search = e.target.value;
-    renderOfficerQueue(el);
-  });
-
-  document.querySelectorAll('[data-app]').forEach(el2 => {
-    el2.addEventListener('click', () => {
-      state.selectedAppId = el2.dataset.app;
+        <div>
+          ${sel ? renderOfficerDetail(sel) : '<p style="color:#64748b;text-align:center;padding:40px">Select an application</p>'}
+        </div>
+      </div>`;
+    document.getElementById('queue-search').addEventListener('input', (e) => {
+      state.search = e.target.value;
       renderOfficerQueue(el);
+    });
+    document.querySelectorAll('[data-app]').forEach(el2 => {
+      el2.addEventListener('click', () => {
+        state.selectedAppId = el2.dataset.app;
+        renderOfficerQueue(el);
+      });
     });
   });
 }
@@ -564,8 +770,8 @@ function renderOfficerDetail(a) {
         <div>
           <span style="font-size:11px;color:#64748b;font-family:monospace">${esc(a.id)}</span>
           <span class="badge badge-info" style="margin-left:6px">${esc(a.type)}</span>
-          <h3 style="font-size:16px;margin-top:4px;color:#fff">${esc(a.applicantName)}</h3>
-          <p style="font-size:12px;color:#64748b">${esc(a.applicantEmail)}</p>
+          <h3 style="font-size:16px;margin-top:4px;color:#fff">${esc(a.applicantName || '')}</h3>
+          <p style="font-size:12px;color:#64748b">${esc(a.applicantEmail || '')}</p>
         </div>
         <div class="flex" style="gap:8px">
           <button class="btn btn-approve" id="btn-approve" ${a.status === 'approved' ? 'disabled style="opacity:.4"' : ''}>Approve</button>
@@ -573,13 +779,11 @@ function renderOfficerDetail(a) {
         </div>
       </div>
       <div style="margin-top:16px">
-        <span class="badge ${a.complianceStatus === 'compliant' ? 'badge-success' : a.complianceStatus === 'warning' ? 'badge-warning' : 'badge-danger'}">${a.complianceStatus}</span>
-        <span style="margin-left:8px;font-size:13px">Risk: ${a.riskScore}/100</span>
-        <span style="margin-left:8px;font-size:13px">Default Rate: ${a.defaultRate}%</span>
+        <span class="badge ${a.complianceStatus === 'compliant' ? 'badge-success' : a.complianceStatus === 'warning' ? 'badge-warning' : 'badge-danger'}">${a.complianceStatus || 'unknown'}</span>
+        <span style="margin-left:8px;font-size:13px">Risk: ${a.riskScore || 0}/100</span>
       </div>
-      <div class="progress-bar"><div class="progress-fill green" style="width:${a.progress}%"></div></div>
+      <div class="progress-bar"><div class="progress-fill green" style="width:${a.progress || 0}%"></div></div>
     </div>
-
     ${a.agentConsensus ? `
       <div class="grid-3" style="margin-bottom:16px">
         ${['documentValidation','policyCompliance','riskEvaluation'].map(k => {
@@ -592,7 +796,6 @@ function renderOfficerDetail(a) {
           </div>`;
         }).join('')}
       </div>` : ''}
-
     ${a.documents && a.documents.length ? `
       <div class="card">
         <h3>Documents</h3>
@@ -616,7 +819,6 @@ function renderOfficerDetail(a) {
           </tbody>
         </table>
       </div>` : ''}
-
     ${a.similarityHeatmap ? `
       <div class="card">
         <h3>Document Similarity Heatmap</h3>
@@ -632,22 +834,16 @@ function renderOfficerDetail(a) {
         </div>
       </div>` : ''}
   `;
-
-  // Attach event listeners after render
   setTimeout(() => {
     const appBtn = document.getElementById('btn-approve');
     const rejBtn = document.getElementById('btn-reject');
     if (appBtn) appBtn.addEventListener('click', () => handleOfficerAction(a.id, 'approve'));
     if (rejBtn) rejBtn.addEventListener('click', () => handleOfficerAction(a.id, 'reject'));
-
     document.querySelectorAll('.doc-status').forEach(sel => {
       sel.addEventListener('change', async () => {
-        const appId = sel.dataset.app;
-        const docId = sel.dataset.doc;
-        const status = sel.value;
         try {
-          const updated = await api('PATCH', `/api/applications/${appId}/documents/${docId}`, { status });
-          state.apps = state.apps.map(a => a.id === appId ? updated : a);
+          const updated = await api('PATCH', `/api/applications/${sel.dataset.app}/documents/${sel.dataset.doc}`, { status: sel.value });
+          state.apps = state.apps.map(a => a.id === sel.dataset.app ? updated : a);
         } catch(e) { console.warn(e); }
       });
     });
@@ -656,7 +852,7 @@ function renderOfficerDetail(a) {
 
 async function handleOfficerAction(id, action) {
   try {
-    const payload = { actor: state.user.name || 'Officer', reason: action === 'approve' ? 'Approved' : 'Rejected by officer' };
+    const payload = { actor: state.user.name || 'Officer', reason: action === 'approve' ? 'Approved by officer' : 'Rejected by officer' };
     const res = await api('PATCH', `/api/applications/${id}/${action}`, payload);
     state.apps = state.apps.map(a => a.id === id ? res.application : a);
     if (res.auditLog) state.logs = [res.auditLog, ...state.logs];
@@ -666,58 +862,90 @@ async function handleOfficerAction(id, action) {
 
 // ─── Officer Logs ───
 function renderOfficerLogs(el) {
-  el.innerHTML = `
-    <div class="card">
-      <div class="flex-between" style="margin-bottom:12px">
-        <h3 style="margin:0">Compliance Audit Ledger</h3>
-        <span class="badge badge-success">Secured Pipeline Active</span>
-      </div>
-      <div style="max-height:500px;overflow-y:auto">
-        ${state.logs.map(l => `
-          <div style="background:#0f172a;padding:14px;border-radius:10px;border:1px solid #1e293b;margin-bottom:8px;cursor:pointer" class="log-entry" data-log-id="${l.id}">
-            <div class="flex-between">
-              <div class="flex" style="gap:8px;align-items:center">
-                <span style="font-size:12px;font-weight:600">${esc(l.actor)}</span>
-                <span class="badge badge-info" style="font-size:9px">${esc(l.eventType)}</span>
-                <span class="badge ${l.riskLevel === 'high' ? 'badge-danger' : l.riskLevel === 'medium' ? 'badge-warning' : 'badge-success'}">${l.riskLevel}</span>
+  el.innerHTML = `<div class="spinner"></div>`;
+  loadData().then(() => {
+    el.innerHTML = `
+      <div class="card">
+        <div class="flex-between" style="margin-bottom:12px">
+          <h3 style="margin:0">Compliance Audit Ledger</h3>
+          <span class="badge badge-success">Secured Pipeline Active</span>
+        </div>
+        <div style="max-height:500px;overflow-y:auto">
+          ${state.logs.map(l => `
+            <div style="background:#0f172a;padding:14px;border-radius:10px;border:1px solid #1e293b;margin-bottom:8px">
+              <div class="flex-between">
+                <div class="flex" style="gap:8px;align-items:center">
+                  <span style="font-size:12px;font-weight:600">${esc(l.actor)}</span>
+                  <span class="badge badge-info" style="font-size:9px">${esc(l.eventType)}</span>
+                  <span class="badge ${l.riskLevel === 'high' ? 'badge-danger' : l.riskLevel === 'medium' ? 'badge-warning' : 'badge-success'}">${l.riskLevel}</span>
+                </div>
+                <span style="font-size:11px;color:#64748b;font-family:monospace">${esc(l.timestamp)}</span>
               </div>
-              <span style="font-size:11px;color:#64748b;font-family:monospace">${esc(l.timestamp)}</span>
+              <p style="font-size:12px;color:#94a3b8;margin-top:6px">${esc(l.details)}</p>
             </div>
-            <p style="font-size:12px;color:#94a3b8;margin-top:6px">${esc(l.details)}</p>
-          </div>
-        `).join('')}
-      </div>
-    </div>`;
+          `).join('')}
+        </div>
+      </div>`;
+  });
 }
 
 // ─── Officer Admin ───
 function renderOfficerAdmin(el) {
+  el.innerHTML = `<div class="spinner"></div>`;
+  const loadAdmin = async () => {
+    try {
+      const [riskData, pipData] = await Promise.all([
+        api('GET','/api/analytics/risk-dashboard'),
+        api('GET','/api/analytics/pipeline-health').catch(() => ({}))
+      ]);
+      renderAdminContent(el, riskData, pipData);
+    } catch(e) {
+      renderAdminContent(el, null, {});
+    }
+  };
+  loadAdmin();
+}
+
+function renderAdminContent(el, risk, pip) {
+  const r = risk || {};
+  const p = pip || {};
+  const alerts = r.riskAlerts || [];
   el.innerHTML = `
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
       <div class="card">
         <h3>Pipeline Health</h3>
         <div class="grid-3">
-          <div class="metric-box"><div class="val" style="color:#10b981">450</div><div class="lbl">OCR Parse Rate<br><small>docs/min</small></div></div>
-          <div class="metric-box"><div class="val" style="color:#818cf8">124</div><div class="lbl">Token Latency<br><small>ms avg</small></div></div>
-          <div class="metric-box"><div class="val" style="color:#10b981">99.8%</div><div class="lbl">RAG Cache<br><small>hit rate</small></div></div>
+          <div class="metric-box"><div class="val" style="color:#10b981">${p.ocrParseRate || 'N/A'}</div><div class="lbl">OCR Parse Rate</div></div>
+          <div class="metric-box"><div class="val" style="color:#818cf8">${p.tokenLatencyMs || 'N/A'}</div><div class="lbl">Token Latency (ms)</div></div>
+          <div class="metric-box"><div class="val" style="color:#10b981">${p.ragVectorCacheHitRate || 'N/A'}%</div><div class="lbl">RAG Cache Hit</div></div>
         </div>
         <h3 style="margin-top:20px">Risk Dashboard</h3>
         <div class="grid-4">
-          <div class="metric-box"><div class="val" style="color:#10b981">2.41%</div><div class="lbl">Default Rate</div></div>
-          <div class="metric-box"><div class="val" style="color:#f43f5e">12.5%</div><div class="lbl">High Risk</div></div>
-          <div class="metric-box"><div class="val" style="color:#818cf8">14.2m</div><div class="lbl">Avg Time</div></div>
-          <div class="metric-box"><div class="val">84.2%</div><div class="lbl">Auto Pass</div></div>
+          <div class="metric-box"><div class="val" style="color:#10b981">${r.predictedDefaultRate || 0}%</div><div class="lbl">Default Rate</div></div>
+          <div class="metric-box"><div class="val" style="color:#f43f5e">${r.highRiskDelta || 0}%</div><div class="lbl">High Risk Change</div></div>
+          <div class="metric-box"><div class="val" style="color:#818cf8">${r.highRiskPortfolio || 0}</div><div class="lbl">High Risk Apps</div></div>
+          <div class="metric-box"><div class="val">${r.automatedPassRate || 0}%</div><div class="lbl">Auto Pass Rate</div></div>
         </div>
       </div>
       <div class="card">
-        <h3>Policy Documents</h3>
-        <div style="max-height:300px;overflow-y:auto;margin-bottom:12px">
+        <h3>Risk Alerts</h3>
+        <div style="max-height:200px;overflow-y:auto;margin-bottom:12px">
+          ${alerts.length === 0 ? '<p style="color:#64748b;font-size:12px">No active alerts.</p>' :
+            alerts.map(a => `
+              <div style="background:#0f172a;padding:10px;border-radius:8px;border:1px solid #1e293b;margin-bottom:6px;display:flex;align-items:center;gap:8px">
+                <span class="badge ${a.severity === 'critical' ? 'badge-danger' : a.severity === 'warning' ? 'badge-warning' : 'badge-info'}">${a.severity}</span>
+                <div style="font-size:12px">${esc(a.message)}</div>
+              </div>
+            `).join('')}
+        </div>
+        <h3 style="margin-top:12px">Policy Documents</h3>
+        <div style="max-height:250px;overflow-y:auto;margin-bottom:12px">
           ${state.policyDocs.map(d => `
             <div style="background:#0f172a;padding:10px;border-radius:8px;border:1px solid #1e293b;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center">
               <div>
                 <span style="font-size:13px;font-weight:600">${esc(d.name)}</span>
                 <span class="badge badge-info" style="margin-left:4px">${esc(d.version)}</span>
-                <div style="font-size:10px;color:#64748b;margin-top:2px">${d.activeRules} rules · ${esc(d.uploadDate)}</div>
+                <div style="font-size:10px;color:#64748b;margin-top:2px">${d.activeRules || 0} rules</div>
               </div>
               <button class="btn btn-danger" style="padding:4px 8px;font-size:10px" data-del-doc="${d.id}">Delete</button>
             </div>
@@ -748,10 +976,9 @@ function renderOfficerAdmin(el) {
 
   document.querySelectorAll('[data-del-doc]').forEach(btn => {
     btn.addEventListener('click', async () => {
-      const id = btn.dataset.delDoc;
       try {
-        const res = await api('DELETE', `/api/policy-documents/${id}`);
-        state.policyDocs = state.policyDocs.filter(d => d.id !== id);
+        const res = await api('DELETE', `/api/policy-documents/${btn.dataset.delDoc}`);
+        state.policyDocs = state.policyDocs.filter(d => d.id !== btn.dataset.delDoc);
         if (res.auditLog) state.logs = [res.auditLog, ...state.logs];
         renderOfficerAdmin(el);
       } catch(e) { console.warn(e); }

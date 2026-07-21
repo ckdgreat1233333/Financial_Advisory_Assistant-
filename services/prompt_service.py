@@ -3,6 +3,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from config import PROMPTS_DIR
+
 
 class PromptService:
     """
@@ -18,8 +20,8 @@ class PromptService:
         )
     """
 
-    def __init__(self, prompt_directory: str = "prompts") -> None:
-        self.prompt_dir = Path(prompt_directory)
+    def __init__(self, prompt_directory: str | None = None) -> None:
+        self.prompt_dir = Path(prompt_directory) if prompt_directory else PROMPTS_DIR
 
         if not self.prompt_dir.exists():
             raise FileNotFoundError(

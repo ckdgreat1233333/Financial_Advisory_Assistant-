@@ -1,0 +1,6 @@
+{
+  "name": "Loan Lifecycle and Underwriting Platform",
+  "description": "An interactive, full-stack loan lifecycle management and intelligent underwriting platform featuring customer portals, document OCR cross-verification, real-time risk assessment, compliance audit trails, and an AI Underwriting Assistant powered by Gemini.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

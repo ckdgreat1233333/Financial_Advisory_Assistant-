@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from rag.pipeline import RAGPipeline
 from rag.chunker import PolicyChunker
 from rag.embedder import PolicyEmbedder
@@ -24,9 +26,10 @@ class PolicyService:
         "Aadhaar Card"
     ]
 
-    def __init__(self):
+    def __init__(self, policy_file: str | None = None):
         self._pipeline_initialized = False
         self._pipeline = None
+        self._policy_file = policy_file
 
     def _ensure_pipeline(self):
         if not self._pipeline_initialized:
@@ -35,6 +38,12 @@ class PolicyService:
                 embedder=PolicyEmbedder(),
                 database=FAISSDatabase()
             )
+            base_dir = Path(__file__).resolve().parent.parent
+            policy_path = self._policy_file or str(base_dir / "data" / "policies" / "home_loan_policy.txt")
+            index_dir = base_dir / "data" / "indexes"
+            index_dir.mkdir(parents=True, exist_ok=True)
+            index_path = str(index_dir / "faiss_index.bin")
+            self._pipeline.build(policy_path, index_path)
             self._pipeline_initialized = True
 
     def retrieve_policy(

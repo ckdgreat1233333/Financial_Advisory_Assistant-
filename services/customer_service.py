@@ -6,13 +6,13 @@ from services.audit_service import AuditService
 
 class CustomerService:
 
-    def __init__(self):
+    def __init__(self, policy: PolicyService | None = None, llm: LLMService | None = None):
 
-        self.policy = PolicyService()
+        self.policy = policy or PolicyService()
 
         self.prompts = PromptService()
 
-        self.llm = LLMService()
+        self.llm = llm or LLMService()
 
         self.audit = AuditService()
 
