@@ -12,14 +12,27 @@ Calculated Risk Level
 ---------------------
 {risk_level}
 
+Risk Score
+----------
+{risk_score}
+
+Triggered Rules
+---------------
+{triggered_rules}
+
 Risk Factors
 ------------
 {risk_factors}
 
+Recommendation
+--------------
+{recommendation}
+
 Instructions
 
-- Explain why the application received this risk level.
-- Mention the supplied risk factors.
+- Explain why the applicant received this risk level.
+- Mention which specific rules were triggered and why.
+- Explain what should happen next based on the recommendation.
 - Mention any missing or invalid documents if provided.
 - Do not change the calculated risk level.
 - Do not approve or reject the application.

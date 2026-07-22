@@ -68,9 +68,22 @@ class DocumentProcessor:
 
         if ext == ".pdf":
             try:
-                text = self.pdf_reader.read(file_path)
+                import fitz
+                doc = fitz.open(file_path)
+                text = ""
+                for page in doc:
+                    text += page.get_text()
+                doc.close()
                 if text.strip():
                     return text, 1.0, "pdf_text_extraction"
+            except Exception:
+                pass
+
+            try:
+                with open(file_path, "r", encoding="utf-8") as f:
+                    text = f.read()
+                if text.strip():
+                    return text, 0.9, "text_fallback"
             except Exception:
                 pass
 
@@ -84,6 +97,16 @@ class DocumentProcessor:
             try:
                 text, confidence = self.ocr_processor.extract_text(file_path)
                 return text, confidence, "ocr"
+            except Exception:
+                return "", 0.0, "failed"
+
+        elif ext == ".txt":
+            try:
+                with open(file_path, "r", encoding="utf-8") as f:
+                    text = f.read()
+                if text.strip():
+                    return text, 0.9, "text_fallback"
+                return "", 0.0, "failed"
             except Exception:
                 return "", 0.0, "failed"
 

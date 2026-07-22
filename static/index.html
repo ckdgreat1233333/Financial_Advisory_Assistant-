@@ -147,6 +147,13 @@ label{font-size:12px;color:#94a3b8;display:block;margin-bottom:4px}
 @media(max-width:768px){.chat-container{grid-template-columns:1fr}}
 .spinner{width:32px;height:32px;border:3px solid #1e293b;border-top-color:#059669;border-radius:50%;animation:spin .6s linear infinite;margin:40px auto}
 @keyframes spin{to{transform:rotate(360deg)}}
+.viewer-modal{position:fixed;inset:0;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;z-index:200}
+.viewer-modal .viewer-box{background:#1e293b;border-radius:12px;width:90%;height:90%;display:flex;flex-direction:column;overflow:hidden}
+.viewer-modal .viewer-header{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid #334155}
+.viewer-modal .viewer-header span{font-size:13px;color:#e2e8f0;font-weight:600}
+.viewer-modal .viewer-header button{background:#334155;border:none;color:#94a3b8;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:12px}
+.viewer-modal .viewer-header button:hover{background:#475569;color:#fff}
+.viewer-modal iframe{flex:1;border:none;background:#fff}
 </style>
 </head>
 <body>
@@ -170,8 +177,9 @@ async function api(method, path, body) {
 
 async function loadData() {
   try {
+    const emailParam = state.user && state.user.role === 'customer' && state.user.email ? `?email=${encodeURIComponent(state.user.email)}` : '';
     const [a, l, p, f, admin] = await Promise.all([
-      api('GET','/api/applications'),
+      api('GET',`/api/applications${emailParam}`),
       api('GET','/api/audit-logs'),
       api('GET','/api/policy-documents'),
       api('GET','/api/faq'),
@@ -193,6 +201,19 @@ function esc(str) {
   const d = document.createElement('div');
   d.textContent = str || '';
   return d.innerHTML;
+}
+
+function showFileViewer(appId, fileName) {
+  const existing = document.getElementById('file-viewer-modal');
+  if (existing) existing.remove();
+  const url = API + '/api/applications/' + appId + '/documents/' + encodeURIComponent(fileName) + '/file';
+  const div = document.createElement('div');
+  div.id = 'file-viewer-modal';
+  div.className = 'viewer-modal';
+  div.innerHTML = '<div class="viewer-box"><div class="viewer-header"><span>' + esc(fileName) + '</span><button id="viewer-close">Close</button></div><iframe src="' + url + '"></iframe></div>';
+  div.addEventListener('click', (e) => { if (e.target === div) div.remove(); });
+  document.body.appendChild(div);
+  document.getElementById('viewer-close').addEventListener('click', () => div.remove());
 }
 
 // ─── Login ───
@@ -405,7 +426,10 @@ function renderAppCard(a) {
         <span class="badge badge-info" style="margin-left:6px">${esc(a.type)}</span>
         <h4 style="font-size:16px;margin-top:4px">${formatCurrency(a.amount)}</h4>
       </div>
-      <span class="badge ${a.status === 'under_review' ? 'badge-warning' : 'badge-danger'}">${a.status === 'under_review' ? 'Under Review' : 'Pending Docs'}</span>
+      <div style="text-align:right">
+        <span class="badge ${a.riskScore > 60 ? 'badge-danger' : a.riskScore > 30 ? 'badge-warning' : 'badge-success'}" style="margin-bottom:4px">Risk ${a.riskScore || '?'}</span><br>
+        <span class="badge ${a.status === 'under_review' ? 'badge-warning' : 'badge-danger'}">${a.status === 'under_review' ? 'Under Review' : 'Pending Docs'}</span>
+      </div>
     </div>
     <div class="progress-bar"><div class="progress-fill green" style="width:${a.progress || 0}%"></div></div>
     ${a.reasoningNotes ? `<p style="font-size:12px;color:#94a3b8;margin-top:8px">${esc(a.reasoningNotes)}</p>` : ''}
@@ -845,7 +869,7 @@ function renderOfficerQueue(el) {
 }
 
 function renderOfficerDetail(a) {
-  return `
+  const html = `
     <div class="card">
       <div class="flex-between">
         <div>
@@ -881,7 +905,7 @@ function renderOfficerDetail(a) {
       <div class="card">
         <h3>Documents</h3>
         <table>
-          <thead><tr><th>Name</th><th>Type</th><th>Status</th><th>Action</th></tr></thead>
+          <thead><tr><th>Name</th><th>Type</th><th>Status</th><th>Action</th><th>File</th></tr></thead>
           <tbody>
             ${a.documents.map(d => `
               <tr>
@@ -895,6 +919,7 @@ function renderOfficerDetail(a) {
                     <option value="pending" ${d.status === 'pending' ? 'selected' : ''}>Pending</option>
                   </select>
                 </td>
+                <td><a href="#" class="view-file" data-app="${a.id}" data-name="${esc(d.name)}" style="color:#818cf8;font-size:12px">View</a></td>
               </tr>
             `).join('')}
           </tbody>
@@ -928,17 +953,33 @@ function renderOfficerDetail(a) {
         } catch(e) { console.warn(e); }
       });
     });
+    document.querySelectorAll('.view-file').forEach(link => {
+      link.addEventListener('click', (e) => {
+        e.preventDefault();
+        showFileViewer(link.dataset.app, link.dataset.name);
+      });
+    });
   }, 0);
+  return html;
 }
 
 async function handleOfficerAction(id, action) {
+  const btn = action === 'approve' ? document.getElementById('btn-approve') : document.getElementById('btn-reject');
+  if (btn) { btn.disabled = true; btn.textContent = 'Processing...'; }
   try {
     const payload = { actor: state.user.name || 'Officer', reason: action === 'approve' ? 'Approved by officer' : 'Rejected by officer' };
     const res = await api('PATCH', `/api/applications/${id}/${action}`, payload);
     state.apps = state.apps.map(a => a.id === id ? res.application : a);
     if (res.auditLog) state.logs = [res.auditLog, ...state.logs];
-    renderOfficerQueue(document.getElementById('main-content'));
-  } catch(e) { alert('Action failed: ' + e.message); }
+    if (state.officerTab === 'admin') {
+      renderOfficerAdmin(document.getElementById('main-content'));
+    } else {
+      renderOfficerQueue(document.getElementById('main-content'));
+    }
+  } catch(e) {
+    if (btn) { btn.disabled = false; btn.textContent = action === 'approve' ? 'Approve' : 'Reject'; }
+    alert('Action failed: ' + e.message);
+  }
 }
 
 // ─── Officer Logs ───
@@ -973,7 +1014,7 @@ function renderOfficerLogs(el) {
 // ─── Officer Admin ───
 function renderOfficerAdmin(el) {
   el.innerHTML = `<div class="spinner"></div>`;
-  const loadAdmin = async () => {
+  loadData().then(async () => {
     try {
       const [riskData, pipData] = await Promise.all([
         api('GET','/api/analytics/risk-dashboard'),
@@ -983,15 +1024,37 @@ function renderOfficerAdmin(el) {
     } catch(e) {
       renderAdminContent(el, null, {});
     }
-  };
-  loadAdmin();
+  });
 }
 
 function renderAdminContent(el, risk, pip) {
   const r = risk || {};
   const p = pip || {};
   const alerts = r.riskAlerts || [];
+  const sel = state.apps.find(a => a.id === state.selectedAppId) || state.apps[0];
+  if (sel) state.selectedAppId = sel.id;
+  const filtered = state.apps.filter(a =>
+    !state.search || a.applicantName?.toLowerCase().includes(state.search.toLowerCase()) || a.id?.toLowerCase().includes(state.search.toLowerCase())
+  );
   el.innerHTML = `
+    <div class="card" style="margin-bottom:16px">
+      <h3>Applications</h3>
+      <div class="form-group" style="margin-bottom:8px"><input type="text" id="admin-app-search" placeholder="Search name or ID..." value="${esc(state.search)}"></div>
+      <div class="sidebar-layout">
+        <div style="max-height:300px;overflow-y:auto">
+          ${filtered.map(a => `
+            <div class="card" style="cursor:pointer;padding:10px;margin-bottom:4px;${state.selectedAppId === a.id ? 'border-color:#4f46e5' : ''}" data-admin-app="${a.id}">
+              <div class="flex-between"><span style="font-size:10px;color:#64748b;font-family:monospace">${esc(a.id)}</span><span class="badge ${(a.riskScore || 0) < 30 ? 'badge-success' : (a.riskScore || 0) < 60 ? 'badge-warning' : 'badge-danger'}">Risk ${a.riskScore || 0}</span></div>
+              <div style="font-size:12px;font-weight:600;margin-top:2px">${esc(a.applicantName || '')} - ${formatCurrency(a.amount)}</div>
+              <span class="badge ${a.status === 'approved' ? 'badge-success' : a.status === 'rejected' ? 'badge-danger' : 'badge-warning'}" style="margin-top:2px;font-size:9px">${a.status}</span>
+            </div>
+          `).join('')}
+        </div>
+        <div>
+          ${sel ? renderOfficerDetail(sel) : '<p style="color:#64748b;text-align:center;padding:20px">Select an application</p>'}
+        </div>
+      </div>
+    </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
       <div class="card">
         <h3>Pipeline Health</h3>
@@ -1063,6 +1126,18 @@ function renderAdminContent(el, risk, pip) {
         if (res.auditLog) state.logs = [res.auditLog, ...state.logs];
         renderOfficerAdmin(el);
       } catch(e) { console.warn(e); }
+    });
+  });
+
+  const adminSearch = document.getElementById('admin-app-search');
+  if (adminSearch) adminSearch.addEventListener('input', (e) => {
+    state.search = e.target.value;
+    renderOfficerAdmin(el);
+  });
+  document.querySelectorAll('[data-admin-app]').forEach(el2 => {
+    el2.addEventListener('click', () => {
+      state.selectedAppId = el2.dataset.adminApp;
+      renderOfficerAdmin(el);
     });
   });
 }

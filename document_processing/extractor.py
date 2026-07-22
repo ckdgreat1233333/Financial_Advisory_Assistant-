@@ -22,12 +22,13 @@ class InformationExtractor:
     """
 
     SALARY_PATTERNS = [
-        r"Monthly\s+Salary\s*[:\-]\s*[₹Rs\.]?\s*([\d,]+\.?\d*)",
-        r"Gross\s+Salary\s*[:\-]\s*[₹Rs\.]?\s*([\d,]+\.?\d*)",
-        r"Net\s+Salary\s*[:\-]\s*[₹Rs\.]?\s*([\d,]+\.?\d*)",
-        r"Basic\s+Pay\s*[:\-]\s*[₹Rs\.]?\s*([\d,]+\.?\d*)",
-        r"Salary\s*[:\-]\s*[₹Rs\.]?\s*([\d,]+\.?\d*)",
-        r"₹\s*([\d,]+\.?\d*)\s*(?:/month|per\s+month|p\.m\.)",
+        r"Net\s+(?:Monthly\s+)?Salary\s*[:\-]?\s*(?:Rs\.?|₹|I)?\s*([\d,]+\.?\d*)",
+        r"Gross\s+(?:Monthly\s+)?Salary\s*[:\-]?\s*(?:Rs\.?|₹|I)?\s*([\d,]+\.?\d*)",
+        r"Monthly\s+Salary\s*[:\-]?\s*(?:Rs\.?|₹)?\s*([\d,]+\.?\d*)",
+        r"Basic\s+Pay\s*[:\-]?\s*(?:Rs\.?|₹)?\s*([\d,]+\.?\d*)",
+        r"Salary\s*[:\-]?\s*(?:Rs\.?|₹)?\s*([\d,]+\.?\d*)",
+        r"(?:Rs\.?|₹)\s*([\d,]+\.?\d*)\s*(?:/month|per\s+month|p\.m\.)",
+        r"Net\s*(?:[:\-]\s*)?(?:\n)\s*(?:Rs\.?|₹|I)?\s*([\d,]+\.?\d*)",
     ]
 
     EMPLOYER_PATTERNS = [
@@ -35,12 +36,18 @@ class InformationExtractor:
         r"Company\s*[:\-]\s*(.+?)(?:\n|$)",
         r"Organization\s*[:\-]\s*(.+?)(?:\n|$)",
         r"Employee\s+of\s+(.+?)(?:\n|$)",
+        r"employed\s+with\s+(.+?)\s+as\s+",
+        r"^(.+?Pvt\.\s*Ltd)",
     ]
 
     EMPLOYEE_NAME_PATTERNS = [
         r"Employee\s+Name\s*[:\-]\s*(.+?)(?:\n|$)",
         r"Name\s*[:\-]\s*(.+?)(?:\n|$)",
         r"Applicant\s+Name\s*[:\-]\s*(.+?)(?:\n|$)",
+        r"Mr\.\s+([A-Z][a-z]+\s+[A-Z][a-z]+)",
+        r"Ms\.\s+([A-Z][a-z]+\s+[A-Z][a-z]+)",
+        r"certifies\s+([A-Za-z]+(?:\s+[A-Za-z]+)+)",
+        r"([A-Za-z]+(?:\s+[A-Za-z]+)+)\s*\(EMP",
     ]
 
     EMPLOYMENT_DURATION_PATTERNS = [
@@ -49,10 +56,11 @@ class InformationExtractor:
         r"Tenure\s*[:\-]\s*(\d+)\s*(?:year|yr)s?",
         r"Working\s+since\s+(\d{4})",
         r"Date\s+of\s+Joining\s*[:\-]\s*(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})",
+        r"joined\s+(?:the\s+organization\s+on\s+)?(\d{1,2}\s+(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{4})",
     ]
 
     BANK_ACCOUNT_PATTERNS = [
-        r"Account\s+(?:No|Number)\s*[:\-]\s*(\d{9,18})",
+        r"Account\s+(?:No|Number)\s*[:\-]\s*((?:[A-Z]+\s+){0,3}\d{4,18})",
         r"A/C\s+(?:No|Number)\s*[:\-]\s*(\d{9,18})",
         r"Acc\s+(?:No|Number)\s*[:\-]\s*(\d{9,18})",
     ]
@@ -64,6 +72,7 @@ class InformationExtractor:
 
     BANK_NAME_PATTERNS = [
         r"(State Bank of India|SBI|HDFC Bank|ICICI Bank|Axis Bank|Kotak Mahindra Bank|Punjab National Bank|Bank of Baroda|Canara Bank|Union Bank of India|Indian Bank|Bank of India|Central Bank of India|Bank of Maharashtra|Indian Overseas Bank|UCO Bank|Punjab and Sind Bank|Bank of Maharashtra)",
+        r"^([A-Za-z]+(?:\s+[A-Za-z]+)*\s+Bank)",
     ]
 
     BALANCE_PATTERNS = [
@@ -111,7 +120,12 @@ class InformationExtractor:
         text = document.extracted_text
         data = ExtractedData()
         
-        data.monthly_salary = self._extract_first_match(text, self.SALARY_PATTERNS)
+        raw_salary = self._extract_first_match(text, self.SALARY_PATTERNS)
+        if raw_salary:
+            try:
+                data.monthly_salary = float(raw_salary.replace(",", ""))
+            except ValueError:
+                pass
         data.employer = self._extract_first_match(text, self.EMPLOYER_PATTERNS)
         data.employee_name = self._extract_first_match(text, self.EMPLOYEE_NAME_PATTERNS)
         data.employment_duration = self._extract_employment_duration(text)
@@ -122,12 +136,19 @@ class InformationExtractor:
         text = document.extracted_text
         data = ExtractedData()
         
-        data.account_number = self._extract_first_match(text, self.BANK_ACCOUNT_PATTERNS)
+        raw_account = self._extract_first_match(text, self.BANK_ACCOUNT_PATTERNS)
+        if raw_account:
+            digits = re.sub(r"\D", "", raw_account)
+            if len(digits) >= 4:
+                data.account_number = digits[-12:] if len(digits) > 12 else digits
+        
         data.average_monthly_balance = self._extract_average_balance(text)
         
         bank_name = self._extract_first_match(text, self.BANK_NAME_PATTERNS)
         if bank_name:
-            data.metadata = {"bank_name": bank_name}
+            if not bank_name.endswith("Bank"):
+                bank_name = bank_name.split("\n")[0].strip()
+            data.bank_name = bank_name
         
         return data
 
@@ -168,9 +189,10 @@ class InformationExtractor:
 
     def _extract_first_match(self, text: str, patterns: list[str]) -> Optional[str]:
         for pattern in patterns:
-            match = re.search(pattern, text, re.IGNORECASE | re.MULTILINE)
+            match = re.search(pattern, text, re.IGNORECASE | re.MULTILINE | re.DOTALL)
             if match:
                 result = match.group(1).strip()
+                result = re.sub(r"\s+", " ", result)
                 if result:
                     return result
         return None
@@ -181,7 +203,10 @@ class InformationExtractor:
             if match:
                 if match.lastindex and match.lastindex >= 2 and match.group(2):
                     return f"{match.group(1)} years {match.group(2)} months"
-                return f"{match.group(1)} years"
+                value = match.group(1)
+                if re.match(r"\d{1,2}\s+[A-Z]", value):
+                    return value
+                return f"{value} years"
         return None
 
     def _extract_average_balance(self, text: str) -> Optional[float]:
@@ -194,7 +219,20 @@ class InformationExtractor:
                     balances.append(val)
                 except ValueError:
                     continue
-        
+
+        if not balances:
+            all_nums = re.findall(r"(?:^|\n)\s*([\d,]+\.?\d*)\s*$", text, re.MULTILINE)
+            candidates = []
+            for num in all_nums:
+                try:
+                    val = float(num.replace(",", ""))
+                    if 1000 <= val <= 10000000:
+                        candidates.append(val)
+                except ValueError:
+                    continue
+            if candidates:
+                return sum(candidates) / len(candidates)
+
         if balances:
             return sum(balances) / len(balances)
         return None
@@ -204,6 +242,7 @@ class InformationExtractor:
             r"Designation\s*[:\-]\s*(.+?)(?:\n|$)",
             r"Position\s*[:\-]\s*(.+?)(?:\n|$)",
             r"Role\s*[:\-]\s*(.+?)(?:\n|$)",
+            r"as\s+a\s+(.+?)(?:\.|,|\s+in\s)",
         ]
         return self._extract_first_match(text, patterns)
 

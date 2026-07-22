@@ -22,21 +22,20 @@ class CustomerService:
 
         question: str,
 
-        mode="friendly",
+        mode="customer_advisory",
 
     ):
 
         context = self.policy.retrieve_context(question)
 
-        template = (
+        mode_map = {
+            "friendly": "customer_prompt.txt",
+            "customer_advisory": "customer_prompt.txt",
+            "compliance": "compliance_prompt.txt",
+            "strict_compliance": "compliance_prompt.txt",
+        }
 
-            "customer_prompt.txt"
-
-            if mode == "friendly"
-
-            else "compliance_prompt.txt"
-
-        )
+        template = mode_map.get(mode, "customer_prompt.txt")
 
         prompt = self.prompts.load(
 

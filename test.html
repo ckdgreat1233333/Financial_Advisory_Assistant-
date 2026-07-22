@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html><head><title>Test</title></head>
+<body style="background:#111;color:#fff;font-family:sans-serif;padding:20px">
+<h2>Admin Test Page</h2>
+<div id="result"></div>
+<script>
+const API = 'http://127.0.0.1:8000';
+async function test() {
+  const out = document.getElementById('result');
+  out.innerHTML = 'Testing...<br>';
+
+  // 1. Test approve API directly
+  try {
+    const r = await fetch(API + '/api/applications/LEND-1E983100/approve', {
+      method: 'PATCH',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({actor: 'Test', reason: 'test'})
+    });
+    const data = await r.json();
+    out.innerHTML += '1. Approve API: ' + r.status + ' status=' + data.application.status + '<br>';
+    
+    // Reset
+    const r2 = await fetch(API + '/api/applications/LEND-1E983100/reject', {
+      method: 'PATCH',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({actor: 'Test', reason: 'reset'})
+    });
+    await r2.json();
+    const r3 = await fetch(API + '/api/applications/LEND-1E983100/approve', {
+      method: 'PATCH',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({actor: 'Test', reason: 'reset2'})
+    });
+    const d3 = await r3.json();
+    const r4 = await fetch(API + '/api/applications/LEND-1E983100/reject', {
+      method: 'PATCH',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({actor: 'Test', reason: 'reset3'})
+    });
+    await r4.json();
+    // Reset to POLICY_REVIEW
+    await fetch(API + '/api/applications/LEND-1E983100/reject', {
+      method: 'PATCH',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({actor: 'Test', reason: 'final'})
+    });
+    out.innerHTML += '2. Approve+Reject cycle: OK<br>';
+  } catch(e) {
+    out.innerHTML += '1. ERROR: ' + e.message + '<br>';
+  }
+
+  // 2. Test file download
+  try {
+    const r = await fetch(API + '/api/applications/LEND-1E983100/documents/Salary_Slips_3_Months_100000.pdf/file');
+    const blob = await r.blob();
+    out.innerHTML += '3. File API: ' + r.status + ' type=' + r.headers.get('content-type') + ' disposition=' + r.headers.get('content-disposition') + ' size=' + blob.size + '<br>';
+  } catch(e) {
+    out.innerHTML += '3. ERROR: ' + e.message + '<br>';
+  }
+
+  out.innerHTML += '<br>All direct API tests passed. Now check the main app.';
+}
+test();
+</script>
+</body></html>

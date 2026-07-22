@@ -72,23 +72,46 @@ def _row_to_frontend(row: dict) -> dict:
         for d in docs:
             if isinstance(d, dict) and "id" not in d:
                 d["id"] = str(uuid.uuid4())
-    risk_score = meta.get("risk_score", 30)
+
+    risk_assessment = meta.get("risk_assessment", {})
+    policy_result = meta.get("policy_result", {})
+    extracted_data = meta.get("extracted_data", {})
+
+    risk_score_map = {"Low": 20, "Medium": 50, "High": 80, "Unknown": 30}
+    risk_level = risk_assessment.get("risk_level", "Unknown")
+    risk_score = risk_assessment.get("risk_score", risk_score_map.get(risk_level, 30))
+
+    progress_map = {
+        "PENDING": 10, "DOCUMENT_VERIFICATION": 25, "POLICY_REVIEW": 40,
+        "RISK_ASSESSMENT": 70, "MANUAL_REVIEW": 85, "APPROVED": 100, "REJECTED": 100
+    }
+    progress = progress_map.get(row.get("status", "PENDING"), 10)
+
+    compliance_eligibility = policy_result.get("eligibility_status", "")
+    compliance_status = "compliant"
+    if compliance_eligibility == "Not Eligible":
+        compliance_status = "failed"
+    elif compliance_eligibility == "Manual Review":
+        compliance_status = "review_required"
+
+    reasoning_notes = risk_assessment.get("llm_explanation", "") or policy_result.get("explanation", "") or ""
+
     return {
         "id": row["id"],
-        "applicantName": row.get("applicant_name", ""),
+        "applicantName": row.get("customer_name", row.get("applicant_name", "")),
         "applicantEmail": row.get("applicant_email", ""),
-        "applicantPhone": row.get("applicant_phone", ""),
+        "applicantPhone": row.get("customer_phone", row.get("applicant_phone", "")),
         "type": ft, "status": st,
         "amount": row.get("loan_amount", 0),
         "termMonths": row.get("term_months", meta.get("term_months", 12)),
-        "progress": meta.get("progress", 10),
+        "progress": progress,
         "submittedDate": row.get("submitted_date", ""),
         "interestRate": row.get("interest_rate", meta.get("interest_rate", 5.0)),
         "riskScore": risk_score,
         "defaultRate": meta.get("default_rate", 1.8),
-        "complianceStatus": meta.get("compliance_status", "compliant"),
+        "complianceStatus": compliance_status,
         "documents": docs if isinstance(docs, list) else [],
-        "reasoningNotes": meta.get("reasoning_notes", ""),
+        "reasoningNotes": reasoning_notes,
         "agentConsensus": meta.get("agent_consensus"),
         "similarityHeatmap": meta.get("similarity_heatmap"),
     }
@@ -215,21 +238,17 @@ async def create_application(req: CreateAppRequest):
 
     app_id = f"LEND-{uuid.uuid4().hex[:8].upper()}"
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
     sub_date = datetime.now().strftime("%Y-%m-%d")
     interest_rate = req.interestRate or 8.5
 
     metadata = {
-        "interest_rate": interest_rate, "risk_score": 30, "default_rate": 1.8,
-        "compliance_status": "pending", "term_months": req.termMonths or 24,
-        "progress": 10, "submitted_date": sub_date,
-        "reasoning_notes": "Application submitted. Documents queued for validation.",
-        "documents": [], "agent_consensus": None, "similarity_heatmap": None
+        "interest_rate": interest_rate,
+        "default_rate": 1.8,
+        "term_months": req.termMonths or 24,
+        "submitted_date": sub_date,
+        "documents": [],
     }
 
-    status = "PENDING"
-
-    # Handle inline documents if any
     docs = []
     for d in req.documents if isinstance(req.documents, list) else []:
         if isinstance(d, dict) and d.get("name") and d.get("docType"):
@@ -239,35 +258,7 @@ async def create_application(req: CreateAppRequest):
                 "docType": d["docType"], "status": "pending",
                 "uploadedAt": d.get("uploadedAt", now)
             })
-
-    uploaded_types = {d["docType"] for d in docs}
-    missing_types = [t for t in REQUIRED_DOC_TYPES if t not in uploaded_types]
-
-    if not missing_types and len(docs) >= 3:
-        status = "POLICY_REVIEW"
-        metadata["agent_consensus"] = {
-            "documentValidation": {"status": "pass", "score": 90, "details": "Document validation completed."},
-            "policyCompliance": {"status": "pass", "score": 85, "details": "Policy compliance check completed."},
-            "riskEvaluation": {"status": "pass", "score": 80, "details": "Risk evaluation completed."}
-        }
-        metadata["progress"] = 40
-        metadata["reasoning_notes"] = "All documents validated. Queued for policy review."
-    elif missing_types:
-        metadata["reasoning_notes"] = f"Missing documents: {', '.join(missing_types)}. Please upload all required documents."
-    else:
-        metadata["progress"] = 15
-        metadata["reasoning_notes"] = "Documents received. Processing will begin shortly."
-
-    # Attempt orchestrator run if docs present
-    if not missing_types and len(docs) >= 3:
-        try:
-            from agents.orchestrator import LoanProcessingOrchestrator
-            orch = LoanProcessingOrchestrator()
-            result = orch.process_application(
-                application=None, file_paths=[], document_types=list(uploaded_types)
-            )
-        except Exception as e:
-            logger.warning(f"Orchestrator processing failed: {e}")
+    metadata["documents"] = docs
 
     import json
     meta_json = json.dumps(metadata)
@@ -275,7 +266,7 @@ async def create_application(req: CreateAppRequest):
     db.save_application(app_id, req.applicantName, req.applicantEmail or "",
                         req.applicantPhone or "", req.type or "HOME",
                         req.amount, req.termMonths or 24, interest_rate,
-                        status, meta_json)
+                        "PENDING", meta_json)
     db.create_audit_log(f"LOG-{uuid.uuid4().hex[:8]}", req.applicantEmail or "Customer",
                         "Application Created",
                         f"New {req.type} loan application created. Amount: ₹{req.amount:,.0f}")
@@ -332,22 +323,80 @@ async def upload_application_documents(application_id: str, files: List[UploadFi
         docs.append(doc_entry)
 
     uploaded_types = {d["docType"] for d in docs if isinstance(d, dict)}
+    meta["documents"] = docs
+
     if all(t in uploaded_types for t in REQUIRED_DOC_TYPES):
-        meta["progress"] = 40
-        meta["reasoning_notes"] = "All documents uploaded. Queued for policy review."
-        new_status = "POLICY_REVIEW"
+        try:
+            LOANTYPE_FROM_DB = {
+                "HOME": LoanType.HOME, "PERSONAL": LoanType.PERSONAL,
+                "VEHICLE": LoanType.VEHICLE, "EDUCATION": LoanType.EDUCATION,
+                "BUSINESS": LoanType.BUSINESS
+            }
+            loan_type_enum = LOANTYPE_FROM_DB.get(row.get("loan_type", "HOME").upper(), LoanType.HOME)
+            app_obj = LoanApplication(
+                application_id=row["id"],
+                customer_name=row.get("customer_name", ""),
+                customer_age=0,
+                customer_phone=row.get("customer_phone", ""),
+                loan_type=loan_type_enum,
+                loan_amount=row.get("loan_amount", 0),
+                monthly_salary=0,
+                employment_type="Unknown",
+                application_status=ApplicationStatus.PENDING
+            )
+
+            file_paths = [os.path.join(upload_dir, d["name"]) for d in docs if d.get("name")]
+            document_types = [d["docType"] for d in docs if d.get("docType")]
+
+            result = orchestrator.process_application(
+                application=app_obj,
+                file_paths=file_paths,
+                document_types=document_types
+            )
+
+            serialized = orchestrator.serialize_result(result)
+
+            meta["risk_assessment"] = serialized["risk_assessment"]
+            meta["policy_result"] = serialized["policy_result"]
+            meta["extracted_data"] = serialized["extracted_data"]
+            meta["missing_documents"] = serialized["missing_documents"]
+            meta["needs_human_review"] = serialized["needs_human_review"]
+            meta["human_review_reason"] = serialized["human_review_reason"]
+
+            new_status = serialized.get("application_status", "POLICY_REVIEW")
+            if new_status in ("APPROVED", "REJECTED"):
+                new_status = "POLICY_REVIEW"
+        except Exception as e:
+            logger.warning(f"Orchestrator processing failed: {e}")
+            new_status = "POLICY_REVIEW"
+            meta["needs_human_review"] = True
+            meta["human_review_reason"] = f"AI pipeline processing failed: {str(e)}"
     else:
         missing = [t for t in REQUIRED_DOC_TYPES if t not in uploaded_types]
         meta["reasoning_notes"] = f"Still missing: {', '.join(DOC_TYPE_NAMES.get(t, t) for t in missing)}"
-        new_status = row["status"]
+        new_status = row.get("status", "PENDING")
 
-    meta["documents"] = docs
     db.update_application(application_id, new_status, json.dumps(meta))
     db.create_audit_log(f"LOG-{uuid.uuid4().hex[:8]}", "Customer", "Document Upload",
                         f"Documents uploaded for {application_id}")
 
     row = db.get_application(application_id)
     return {"application": _row_to_frontend(row)}
+
+@app.get("/api/applications/{application_id}/documents/{doc_name}/file")
+async def get_document_file(application_id: str, doc_name: str):
+    """Serve uploaded document files for officer review (inline preview)."""
+    file_path = os.path.join("data", "uploads", application_id, doc_name)
+    if not os.path.exists(file_path):
+        raise HTTPException(404, "File not found")
+    ext = os.path.splitext(doc_name)[1].lower()
+    media_map = {".pdf": "application/pdf", ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".txt": "text/plain"}
+    media_type = media_map.get(ext, "application/octet-stream")
+    from fastapi.responses import Response
+    with open(file_path, "rb") as f:
+        content = f.read()
+    return Response(content=content, media_type=media_type,
+                    headers={"Content-Disposition": f"inline; filename=\"{doc_name}\""})
 
 @app.patch("/api/applications/{application_id}/approve")
 async def approve_application(application_id: str, req: ApproveRejectRequest):
@@ -510,17 +559,19 @@ async def risk_dashboard():
     alerts = []
     for a in applications:
         meta = json.loads(a["metadata"]) if isinstance(a["metadata"], str) else (a["metadata"] or {})
-        score = meta.get("risk_score", 50)
+        ra = meta.get("risk_assessment", {})
+        pr = meta.get("policy_result", {})
+        score = ra.get("risk_score", meta.get("risk_score", 50))
         scores.append(score)
         if score > 60:
             alerts.append({
                 "severity": "critical", "applicationId": a["id"],
-                "message": f"High risk application: {a['applicant_name']} (risk score: {score})"
+                "message": f"High risk application: {a.get('customer_name', a.get('applicant_name', 'Unknown'))} (risk score: {score})"
             })
-        elif meta.get("compliance_status") == "failed":
+        elif pr.get("eligibility_status") == "Not Eligible" or meta.get("compliance_status") == "failed":
             alerts.append({
                 "severity": "warning", "applicationId": a["id"],
-                "message": f"Compliance issue: {a['applicant_name']}"
+                "message": f"Compliance issue: {a.get('customer_name', a.get('applicant_name', 'Unknown'))}"
             })
     high_risk_count = sum(1 for s in scores if s > 60)
     total = len(scores) or 1
@@ -557,7 +608,7 @@ POLICY_RULES = {
 async def chat(req: ChatRequest):
     try:
         if llm_service.health_check():
-            response = customer_service.answer(question=req.message, mode="friendly")
+            response = customer_service.answer(question=req.message, mode="customer_advisory")
             ctx = policy_service.retrieve_context(req.message, top_k=3)
             ct = ctx[:500] if ctx else ""
             return {"text": response, "reasoning": "LLM response with RAG context.",
@@ -615,7 +666,7 @@ class ProcessApplicationRequest(BaseModel):
     application_id: str; file_paths: List[str]; document_types: List[str]
 
 class CustomerQueryRequest(BaseModel):
-    question: str; mode: str = "friendly"
+    question: str; mode: str = "customer_advisory"
 
 class HumanReviewRequest(BaseModel):
     application_id: str; decision: str; reviewer: str; comments: str = ""
@@ -628,7 +679,7 @@ async def create_loan_application(request: LoanApplicationRequest):
         raise HTTPException(400, f"Invalid loan type: {request.loan_type}")
     app_id = f"LEND-{uuid.uuid4().hex[:8].upper()}"
     import json
-    meta = json.dumps({"progress": 10, "risk_score": 50})
+    meta = json.dumps({})
     db.save_application(app_id, request.customer_name, "", request.customer_phone,
                         request.loan_type.upper(), request.loan_amount, 24, 8.5, "PENDING", meta)
     return {"application_id": app_id, "status": "created",
@@ -637,28 +688,55 @@ async def create_loan_application(request: LoanApplicationRequest):
 @app.post("/api/business/process-application")
 async def process_loan_application(request: ProcessApplicationRequest):
     try:
-        result = orchestrator.process_application(
-            application=None, file_paths=request.file_paths,
-            document_types=request.document_types)
         row = db.get_application(request.application_id)
+        if not row:
+            raise HTTPException(404, "Application not found")
+
+        LOANTYPE_FROM_DB = {
+            "HOME": LoanType.HOME, "PERSONAL": LoanType.PERSONAL,
+            "VEHICLE": LoanType.VEHICLE, "EDUCATION": LoanType.EDUCATION,
+            "BUSINESS": LoanType.BUSINESS
+        }
+        app_obj = LoanApplication(
+            application_id=row["id"],
+            customer_name=row.get("customer_name", ""),
+            customer_age=0,
+            customer_phone=row.get("customer_phone", ""),
+            loan_type=LOANTYPE_FROM_DB.get(row.get("loan_type", "HOME").upper(), LoanType.HOME),
+            loan_amount=row.get("loan_amount", 0),
+            monthly_salary=0,
+            employment_type="Unknown",
+            application_status=ApplicationStatus.PENDING
+        )
+
+        result = orchestrator.process_application(
+            application=app_obj,
+            file_paths=request.file_paths,
+            document_types=request.document_types)
+
+        serialized = orchestrator.serialize_result(result)
+
         if row:
             import json
             meta = json.loads(row["metadata"]) if isinstance(row["metadata"], str) else (row["metadata"] or {})
-            meta["agent_consensus"] = {
-                "documentValidation": {"status": "pass", "score": 90, "details": "Document validation completed."},
-                "policyCompliance": {"status": "pass", "score": 85, "details": "Policy compliance check completed."},
-                "riskEvaluation": {"status": "pass", "score": 80, "details": "Risk evaluation completed."}
-            }
-            db.update_application(request.application_id, "POLICY_REVIEW", json.dumps(meta))
-        return {"application_id": request.application_id, "status": "processed",
-            "missing_documents": result.get("missing_documents", []),
-            "needs_human_review": result.get("needs_human_review", False),
-            "risk_assessment": {"risk_level": str(result["risk_assessment"].risk_level) if hasattr(result.get("risk_assessment"), "risk_level") else "low",
-                "confidence_score": 0.85,
-                "reasons": ["Processing completed"],
-                "recommendation": str(result["risk_assessment"].recommendation) if hasattr(result.get("risk_assessment"), "recommendation") else "approve"},
-            "policy_result": {"eligibility_status": str(result["policy_result"].eligibility_status) if hasattr(result.get("policy_result"), "eligibility_status") else "eligible",
-                "violations": []}}
+            meta["risk_assessment"] = serialized["risk_assessment"]
+            meta["policy_result"] = serialized["policy_result"]
+            meta["extracted_data"] = serialized["extracted_data"]
+            meta["missing_documents"] = serialized["missing_documents"]
+            meta["needs_human_review"] = serialized["needs_human_review"]
+            meta["human_review_reason"] = serialized["human_review_reason"]
+            new_status = serialized.get("application_status", "POLICY_REVIEW")
+            db.update_application(request.application_id, new_status, json.dumps(meta))
+
+        return {
+            "application_id": request.application_id,
+            "status": serialized.get("application_status", "processed"),
+            "missing_documents": serialized.get("missing_documents", []),
+            "needs_human_review": serialized.get("needs_human_review", False),
+            "risk_assessment": serialized.get("risk_assessment", {}),
+            "policy_result": serialized.get("policy_result", {}),
+            "extracted_data": serialized.get("extracted_data", {}),
+        }
     except Exception as e:
         raise HTTPException(500, detail=str(e))
 
@@ -668,11 +746,15 @@ async def get_risk_assessment(application_id: str):
     if row:
         import json
         meta = json.loads(row["metadata"]) if isinstance(row["metadata"], str) else (row["metadata"] or {})
+        ra = meta.get("risk_assessment", {})
         return {"application_id": application_id,
-                "risk_level": meta.get("risk_score", 50),
-                "confidence_score": 0.85,
-                "reasons": ["Risk assessed from metadata"],
-                "recommendation": "approve" if int(meta.get("risk_score", 50)) < 60 else "review"}
+                "risk_level": ra.get("risk_level", "Unknown"),
+                "risk_score": ra.get("risk_score", 0),
+                "confidence_score": ra.get("confidence_score", 0),
+                "reasons": ra.get("reasons", ["Risk assessment not yet available"]),
+                "recommendation": ra.get("recommendation", "Pending"),
+                "triggered_rules": ra.get("triggered_rules", []),
+                "llm_explanation": ra.get("llm_explanation", "")}
     return {"application_id": application_id, "message": "Risk assessment not available"}
 
 @app.post("/api/customer/chat")
