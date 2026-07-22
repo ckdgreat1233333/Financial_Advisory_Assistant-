@@ -1014,23 +1014,10 @@ function renderOfficerLogs(el) {
 // ─── Officer Admin ───
 function renderOfficerAdmin(el) {
   el.innerHTML = `<div class="spinner"></div>`;
-  loadData().then(async () => {
-    try {
-      const [riskData, pipData] = await Promise.all([
-        api('GET','/api/analytics/risk-dashboard'),
-        api('GET','/api/analytics/pipeline-health').catch(() => ({}))
-      ]);
-      renderAdminContent(el, riskData, pipData);
-    } catch(e) {
-      renderAdminContent(el, null, {});
-    }
-  });
+  loadData().then(() => renderAdminContent(el));
 }
 
-function renderAdminContent(el, risk, pip) {
-  const r = risk || {};
-  const p = pip || {};
-  const alerts = r.riskAlerts || [];
+function renderAdminContent(el) {
   const sel = state.apps.find(a => a.id === state.selectedAppId) || state.apps[0];
   if (sel) state.selectedAppId = sel.id;
   const filtered = state.apps.filter(a =>
@@ -1055,77 +1042,33 @@ function renderAdminContent(el, risk, pip) {
         </div>
       </div>
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
-      <div class="card">
-        <h3>Pipeline Health</h3>
-        <div class="grid-3">
-          <div class="metric-box"><div class="val" style="color:#10b981">${p.ocrParseRate || 'N/A'}</div><div class="lbl">OCR Parse Rate</div></div>
-          <div class="metric-box"><div class="val" style="color:#818cf8">${p.tokenLatencyMs || 'N/A'}</div><div class="lbl">Token Latency (ms)</div></div>
-          <div class="metric-box"><div class="val" style="color:#10b981">${p.ragVectorCacheHitRate || 'N/A'}%</div><div class="lbl">RAG Cache Hit</div></div>
-        </div>
-        <h3 style="margin-top:20px">Risk Dashboard</h3>
-        <div class="grid-4">
-          <div class="metric-box"><div class="val" style="color:#10b981">${r.predictedDefaultRate || 0}%</div><div class="lbl">Default Rate</div></div>
-          <div class="metric-box"><div class="val" style="color:#f43f5e">${r.highRiskDelta || 0}%</div><div class="lbl">High Risk Change</div></div>
-          <div class="metric-box"><div class="val" style="color:#818cf8">${r.highRiskPortfolio || 0}</div><div class="lbl">High Risk Apps</div></div>
-          <div class="metric-box"><div class="val">${r.automatedPassRate || 0}%</div><div class="lbl">Auto Pass Rate</div></div>
-        </div>
-      </div>
-      <div class="card">
-        <h3>Risk Alerts</h3>
-        <div style="max-height:200px;overflow-y:auto;margin-bottom:12px">
-          ${alerts.length === 0 ? '<p style="color:#64748b;font-size:12px">No active alerts.</p>' :
-            alerts.map(a => `
-              <div style="background:#0f172a;padding:10px;border-radius:8px;border:1px solid #1e293b;margin-bottom:6px;display:flex;align-items:center;gap:8px">
-                <span class="badge ${a.severity === 'critical' ? 'badge-danger' : a.severity === 'warning' ? 'badge-warning' : 'badge-info'}">${a.severity}</span>
-                <div style="font-size:12px">${esc(a.message)}</div>
-              </div>
-            `).join('')}
-        </div>
-        <h3 style="margin-top:12px">Policy Documents</h3>
-        <div style="max-height:250px;overflow-y:auto;margin-bottom:12px">
-          ${state.policyDocs.map(d => `
-            <div style="background:#0f172a;padding:10px;border-radius:8px;border:1px solid #1e293b;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center">
-              <div>
-                <span style="font-size:13px;font-weight:600">${esc(d.name)}</span>
-                <span class="badge badge-info" style="margin-left:4px">${esc(d.version)}</span>
-                <div style="font-size:10px;color:#64748b;margin-top:2px">${d.activeRules || 0} rules</div>
-              </div>
-              <button class="btn btn-danger" style="padding:4px 8px;font-size:10px" data-del-doc="${d.id}">Delete</button>
-            </div>
-          `).join('')}
-        </div>
-        <div style="border-top:1px solid #1e293b;padding-top:12px">
-          <h4 style="font-size:13px;margin-bottom:8px;color:#fff">Add New Policy</h4>
-          <div class="flex" style="gap:8px">
-            <input type="text" id="new-doc-name" placeholder="Policy name" style="flex:1">
-            <input type="text" id="new-doc-ver" placeholder="v1.0" style="width:80px" value="v1.0">
-            <button class="btn btn-indigo" id="add-doc-btn">Add</button>
-          </div>
-        </div>
-      </div>
+    <div class="card">
+      <h3 style="margin-bottom:12px">Manage Users</h3>
+      <div style="max-height:400px;overflow-y:auto" id="admin-users-list"></div>
     </div>`;
 
-  document.getElementById('add-doc-btn').addEventListener('click', async () => {
-    const name = document.getElementById('new-doc-name').value;
-    const ver = document.getElementById('new-doc-ver').value;
-    if (!name) return;
-    try {
-      const res = await api('POST','/api/policy-documents', { name, version: ver });
-      state.policyDocs = [res.policyDocument, ...state.policyDocs];
-      if (res.auditLog) state.logs = [res.auditLog, ...state.logs];
-      renderOfficerAdmin(el);
-    } catch(e) { alert('Failed: ' + e.message); }
-  });
-
-  document.querySelectorAll('[data-del-doc]').forEach(btn => {
-    btn.addEventListener('click', async () => {
-      try {
-        const res = await api('DELETE', `/api/policy-documents/${btn.dataset.delDoc}`);
-        state.policyDocs = state.policyDocs.filter(d => d.id !== btn.dataset.delDoc);
-        if (res.auditLog) state.logs = [res.auditLog, ...state.logs];
-        renderOfficerAdmin(el);
-      } catch(e) { console.warn(e); }
+  api('GET','/api/users').then(res => {
+    const list = document.getElementById('admin-users-list');
+    if (!list) return;
+    const users = (res.users || []).filter(u => u.username !== 'admin');
+    list.innerHTML = users.map(u => `
+      <div style="background:#0f172a;padding:10px;border-radius:8px;border:1px solid #1e293b;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <span style="font-size:13px;font-weight:600">${esc(u.name || u.username)}</span>
+          <span class="badge badge-info" style="margin-left:4px">${esc(u.role)}</span>
+          <div style="font-size:10px;color:#64748b;margin-top:2px">${esc(u.email)}</div>
+        </div>
+        <button class="btn btn-danger btn-sm del-user-btn" data-user="${u.username}">Remove</button>
+      </div>
+    `).join('');
+    list.querySelectorAll('.del-user-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        if (!confirm('Remove user ' + btn.dataset.user + '?')) return;
+        try {
+          await api('DELETE', '/api/users/' + btn.dataset.user);
+          renderAdminContent(el);
+        } catch(e) { alert('Failed: ' + e.message); }
+      });
     });
   });
 

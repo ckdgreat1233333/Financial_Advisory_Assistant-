@@ -111,6 +111,19 @@ def update_user(username: str, name: str = None, email: str = None, phone: str =
         conn.commit()
     conn.close()
 
+def list_users() -> list:
+    conn = get_db()
+    rows = conn.execute("SELECT username, email, name, phone, role FROM users ORDER BY username").fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+def delete_user(username: str) -> bool:
+    conn = get_db()
+    cur = conn.execute("DELETE FROM users WHERE username=?", (username,))
+    conn.commit()
+    conn.close()
+    return cur.rowcount > 0
+
 # ─── Applications ───
 
 def list_applications(email: str = "", status: str = "", search: str = "") -> list:

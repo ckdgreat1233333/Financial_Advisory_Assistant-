@@ -203,6 +203,18 @@ async def auth_me(username: str = ""):
         raise HTTPException(401, "Not authenticated")
     return {"user": {k: v for k, v in user.items() if k != "password"}}
 
+@app.get("/api/users")
+async def list_users():
+    return {"users": db.list_users()}
+
+@app.delete("/api/users/{username}")
+async def remove_user(username: str):
+    if not db.delete_user(username):
+        raise HTTPException(404, "User not found")
+    db.create_audit_log(f"LOG-{uuid.uuid4().hex[:8]}", "Admin", "User Deletion",
+                        f"User {username} removed")
+    return {"success": True}
+
 # ══════════════════════════════════════════════════
 # APPLICATIONS
 # ══════════════════════════════════════════════════
