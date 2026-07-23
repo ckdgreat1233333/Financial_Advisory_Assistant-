@@ -18,8 +18,10 @@ from models.extracted_data import ExtractedData
 from models.risk import RiskAssessment
 from utils.enums import (
     ApplicationStatus, DocumentType, LoanType, RiskLevel, Recommendation,
-    ValidationStatus, ValidationError, AuditSeverity, AgentType, EligibilityStatus
+    ValidationStatus, ValidationError, AuditSeverity, AgentType, EligibilityStatus,
+    IntentType
 )
+from ml.intent_classifier import IntentClassifier
 from services.audit_service import AuditService
 from services.policy_service import PolicyService
 from services.customer_service import CustomerService
@@ -42,6 +44,11 @@ audit_service = AuditService()
 policy_service = PolicyService()
 llm_service = LLMService()
 customer_service = CustomerService(policy=policy_service, llm=llm_service)
+
+try:
+    intent_classifier = IntentClassifier()
+except Exception:
+    intent_classifier = None
 
 # ─── Auth ───
 def _hash_pw(p: str) -> str: return hashlib.sha256(p.encode()).hexdigest()
@@ -618,32 +625,64 @@ POLICY_RULES = {
 
 @app.post("/api/chat")
 async def chat(req: ChatRequest):
+    intent_label = "general"
+    if intent_classifier:
+        try:
+            intent = intent_classifier.predict(req.message)
+            intent_label = intent.value.lower().replace(" ", "_")
+        except Exception:
+            pass
+
+    # Intent shortcuts — fast path, no LLM needed
+    if intent_label == "document_processing":
+        return {"text": ("To apply for a loan, you need: Salary Slip (last 3 months), "
+                         "Bank Statement (last 6 months), and Employment Letter. "
+                         "Upload them through your application dashboard."),
+                "reasoning": "Intent-based document guidance",
+                "intent": intent_label,
+                "policyGrounding": {"documentName": "Loan Policy", "clause": "Section 2 - Required Documents",
+                                    "extractedText": "Mandatory documents: Salary Slip, Bank Statement, Employment Letter"}}
+
+    if intent_label == "application_status":
+        return {"text": ("You can check your application status in the dashboard. "
+                         "If you need specific details about your application, "
+                         "please contact your loan officer."),
+                "reasoning": "Intent-based status guidance",
+                "intent": intent_label,
+                "policyGrounding": None}
+
+    # LLM path — for policy, risk, and general queries
     try:
         if llm_service.health_check():
             response = customer_service.answer(question=req.message, mode="customer_advisory")
             ctx = policy_service.retrieve_context(req.message, top_k=3)
             ct = ctx[:500] if ctx else ""
             return {"text": response, "reasoning": "LLM response with RAG context.",
+                    "intent": intent_label,
                     "policyGrounding": {"documentName": "Loan Policy", "clause": "Policy RAG",
                                         "extractedText": ct or "Policy context retrieved."}}
     except Exception as e:
         logger.warning(f"LLM chat failed: {e}")
 
+    # Fallback rules
     msg = req.message.lower()
     matched = [v for k, v in POLICY_RULES.items() if k in msg]
     if matched:
         return {"text": "Based on our lending policy:\n\n" + "\n\n".join(f"• {m}" for m in matched) +
                 ("\n\nWould you like more details?" if len(matched) == 1 else ""),
-                "reasoning": "Rule-based match", "policyGrounding": {
+                "reasoning": "Rule-based match", "intent": intent_label,
+                "policyGrounding": {
                     "documentName": "Home Loan Policy", "clause": "Matched Rules",
                     "extractedText": "\n".join(matched)}}
     ctx = policy_service.retrieve_context(req.message, top_k=3)
     if ctx.strip():
         return {"text": f"Based on our lending policy:\n\n{ctx[:800]}", "reasoning": "Policy text retrieval",
+                "intent": intent_label,
                 "policyGrounding": {"documentName": "Home Loan Policy", "clause": "Full text",
                                     "extractedText": ctx[:500]}}
     return {"text": "I can help with policy questions about salary, loan amounts, required documents, employment criteria, age, and risk. Please ask about a specific policy area.",
-            "reasoning": "General guidance", "policyGrounding": {
+            "reasoning": "General guidance", "intent": intent_label,
+            "policyGrounding": {
                 "documentName": "Home Loan Policy", "clause": "General",
                 "extractedText": "Home Loan Policy covering eligibility, documents, income, employment, loan amounts, and risk."}}
 

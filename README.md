@@ -146,10 +146,12 @@ LoanProcessingAssistant/
 ├── docs/                         # Documentation
 │   └── architecture.md           # Architecture documentation
 ├── tests/                        # Test suite
-│   ├── test_orchestrator.py      # Orchestrator integration tests
-│   ├── test_policy_service.py    # Policy service unit tests
-│   ├── test_risk_service.py      # Risk service unit tests
-│   └── test_rag_pipeline.py      # RAG pipeline tests
+│   ├── test_agents.py            # LLM service smoke test
+│   ├── test_documents.py         # Document extraction & validation tests
+│   ├── test_embedder.py          # Embedding smoke test
+│   ├── test_integration.py       # Full workflow integration tests
+│   ├── test_ml.py                # ML intent classification & preprocessing tests
+│   └── test_rag.py               # RAG pipeline (chunker, embedder, FAISS) tests
 ├── requirements.txt              # Python dependencies
 └── package.json                  # React SPA dependencies
 ```

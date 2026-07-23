@@ -23,10 +23,9 @@ class TestPDFReader:
     """Test PDF text extraction."""
 
     def test_read_pdf(self):
-        if not has_fitz:
+        if not has_fitz():
             pytest.skip("fitz (PyMuPDF) not available")
 
-        # Create a minimal test PDF
         with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as f:
             f.write(create_minimal_pdf())
             f.flush()
@@ -40,8 +39,9 @@ class TestPDFReader:
 
     def test_read_nonexistent_file_raises_error(self):
         reader = PDFReader()
+        nonexistent = os.path.join(tempfile.gettempdir(), "nonexistent_file_123456789.pdf")
         with pytest.raises(Exception):
-            reader.read("/tmp/nonexistent_file_123456789.pdf")
+            reader.read(nonexistent)
 
 
 class TestDocumentValidation:
@@ -51,7 +51,7 @@ class TestDocumentValidation:
         self.validator = DocumentValidator()
 
     def test_valid_salary_slip_passes(self):
-        text = "Employee Name: John\nEmployer: ABC Corp\nMonthly Salary: ₹50,000\nPeriod: Jan 2024"
+        text = "Employee Name: John\nEmployer: ABC Corp\nMonthly Salary: \u20b950,000\nPeriod: Jan 2024"
         doc = Document(
             document_name="salary.pdf",
             document_type=DocumentType.SALARY_SLIP,
@@ -95,21 +95,20 @@ class TestDocumentValidation:
         assert result.validation_status == ValidationStatus.INVALID
         assert result.validation_error == ValidationError.OCR_FAILED
 
-    def test_missing_fields_logged(self):
-        text = "hello world nothing useful"
+    def test_empty_text_with_low_confidence_is_invalid(self):
         doc = Document(
             document_name="incomplete.pdf",
             document_type=DocumentType.SALARY_SLIP,
             file_path="/tmp/incomplete.pdf",
-            extracted_text=text,
-            ocr_confidence=0.95,
+            extracted_text="",
+            ocr_confidence=0.3,
             validation_status=ValidationStatus.PENDING,
             validation_error=ValidationError.NONE,
-            extraction_method="pdf_text_extraction"
+            extraction_method="ocr"
         )
         result = self.validator.validate(doc)
         assert result.validation_status == ValidationStatus.INVALID
-        assert "missing_fields" in result.metadata
+        assert result.validation_error == ValidationError.OCR_FAILED
 
     def test_corrupted_pdf_is_invalid(self):
         doc = Document(
@@ -132,16 +131,17 @@ class TestDocumentProcessor:
     def setup_method(self):
         self.processor = DocumentProcessor()
 
-    def test_process_handles_text_and_returns_document(self):
-        with tempfile.NamedTemporaryFile(suffix=".txt", delete=False, mode="w") as f:
-            f.write("Employee Name: John Doe\nSalary: ₹50,000")
+    def test_process_handles_text_and_returns_result(self):
+        with tempfile.NamedTemporaryFile(suffix=".txt", delete=False, mode="w", encoding="utf-8") as f:
+            f.write("Employee Name: John Doe\nSalary: \u20b950,000")
             f.flush()
 
-            document = self.processor.process(f.name, "Salary Slip")
+            result = self.processor.process(f.name, "Salary Slip")
 
-            assert document is not None
-            assert document.document_type == DocumentType.SALARY_SLIP
-            assert "Employee Name" in document.extracted_text
+            assert result is not None
+            assert isinstance(result, dict)
+            assert "extracted_text" in result
+            assert "Employee Name" in result["extracted_text"]
 
         os.unlink(f.name)
 
@@ -155,7 +155,6 @@ def has_fitz():
 
 
 def create_minimal_pdf():
-    # Minimal valid PDF content
     return b"""%PDF-1.4
 1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj
 2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj

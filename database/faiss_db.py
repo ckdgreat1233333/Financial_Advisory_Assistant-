@@ -67,7 +67,7 @@ class FAISSDatabase:
         try:
             if self.index is not None:
                 os.makedirs(os.path.dirname(index_path), exist_ok=True)
-                self.index.write(index_path)
+                faiss.write_index(self.index, index_path)
                 print(f"Saved FAISS index to {index_path}")
         except Exception as e:
             print(f"Failed to save FAISS index: {e}")

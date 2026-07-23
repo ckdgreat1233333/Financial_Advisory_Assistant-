@@ -2,6 +2,7 @@ from services.policy_service import PolicyService
 from services.prompt_service import PromptService
 from services.llm_service import LLMService
 from services.audit_service import AuditService
+from utils.enums import IntentType
 
 
 class CustomerService:
@@ -16,6 +17,34 @@ class CustomerService:
 
         self.audit = AuditService()
 
+        self._classifier = None
+
+        self._intent_map = {
+            IntentType.POLICY_QUERY: "policy_prompt.txt",
+            IntentType.DOCUMENT_PROCESSING: "customer_prompt.txt",
+            IntentType.APPLICATION_STATUS: "customer_prompt.txt",
+            IntentType.RISK_QUERY: "customer_prompt.txt",
+            IntentType.GENERAL_QUERY: "customer_prompt.txt",
+        }
+
+    def _get_classifier(self):
+        if self._classifier is None:
+            try:
+                from ml.intent_classifier import IntentClassifier
+                self._classifier = IntentClassifier()
+            except Exception:
+                self._classifier = False
+        return self._classifier if self._classifier else None
+
+    def classify_intent(self, question: str) -> IntentType:
+        classifier = self._get_classifier()
+        if classifier:
+            try:
+                return classifier.predict(question)
+            except Exception:
+                pass
+        return IntentType.GENERAL_QUERY
+
     def answer(
 
         self,
@@ -26,7 +55,7 @@ class CustomerService:
 
     ):
 
-        context = self.policy.retrieve_context(question)
+        intent = self.classify_intent(question)
 
         mode_map = {
             "friendly": "customer_prompt.txt",
@@ -35,7 +64,9 @@ class CustomerService:
             "strict_compliance": "compliance_prompt.txt",
         }
 
-        template = mode_map.get(mode, "customer_prompt.txt")
+        template = self._intent_map.get(intent) or mode_map.get(mode, "customer_prompt.txt")
+
+        context = self.policy.retrieve_context(question)
 
         prompt = self.prompts.load(
 
@@ -55,7 +86,7 @@ class CustomerService:
 
             action="Customer Query",
 
-            details=question,
+            details=f"Intent: {intent.value}, Question: {question}",
 
         )
 
