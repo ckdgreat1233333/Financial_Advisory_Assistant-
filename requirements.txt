@@ -68,4 +68,5 @@ tokenizers>=0.22.0
 # Console Output
 # ----------------------------------------
 rich>=15.0.0
-fitz>=0.0.1.dev2
+openai
+python-multipart

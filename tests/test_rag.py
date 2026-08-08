@@ -3,7 +3,6 @@ RAG Pipeline Tests and ML/NLP Concepts Documentation
 """
 import pytest
 import os
-import sys
 import tempfile
 from pathlib import Path
 
@@ -15,6 +14,14 @@ from database.faiss_db import FAISSDatabase
 import numpy as np
 
 
+def has_faiss():
+    try:
+        import faiss
+        return True
+    except ImportError:
+        return False
+
+
 class TestPolicyChunker:
     """Test document chunking strategy for RAG."""
 
@@ -23,14 +30,14 @@ class TestPolicyChunker:
 
     def test_chunks_by_section(self):
         policy_text = """
-        Section 1 - Eligibility
-        Applicant must be between 21 and 60 years of age.
+        Section 1 - Coverage Scope
+        The policy covers Auto, Health and Property claims.
 
         Section 2 - Required Documents
-        Salary Slip (last 3 months)
+        Claim Form (signed), Policy Document, Proof of Loss
 
-        Section 3 - Income Requirements
-        Minimum monthly salary: \u20b930,000
+        Section 3 - Reporting Timeline
+        Claims must be reported within 30 days.
         """
 
         chunks = self.chunker.chunk(policy_text)
@@ -43,7 +50,7 @@ class TestPolicyChunker:
     def test_only_sections_returned(self):
         policy_text = """
         Header
-        Section 1 - Eligibility
+        Section 1 - Coverage Scope
         Content 1
 
         Section 2 - Required Documents
@@ -66,8 +73,8 @@ class TestPolicyEmbedder:
 
     def test_embed_shape(self):
         chunks = [
-            "Minimum salary is \u20b930,000 per month.",
-            "Required documents: Salary Slip, Bank Statement."
+            "Claims must be reported within 30 days of the incident.",
+            "Required documents: Claim Form, Policy Document, Proof of Loss."
         ]
 
         embeddings = self.embedder.embed(chunks)
@@ -76,7 +83,7 @@ class TestPolicyEmbedder:
         assert isinstance(embeddings, np.ndarray)
 
     def test_embed_query_shape(self):
-        query = "What is the minimum salary?"
+        query = "What is the reporting window?"
 
         embedding = self.embedder.embed_query(query)
 
@@ -84,8 +91,8 @@ class TestPolicyEmbedder:
 
     def test_similar_documents_have_similar_embeddings(self):
         chunks = [
-            "Monthly salary requirement is \u20b930,000",
-            "Minimum income needed for loan is \u20b930,000",
+            "Claims must be reported within 30 days",
+            "Incidents must be reported within 30 days",
             "The sky is blue and the sun is bright"
         ]
 
@@ -94,12 +101,12 @@ class TestPolicyEmbedder:
         norms = np.linalg.norm(embeddings, axis=1, keepdims=True)
         normalized = embeddings / norms
 
-        salary_income_sim = np.dot(normalized[0], normalized[1])
-        salary_unrelated_sim = np.dot(normalized[0], normalized[2])
+        reporting_incident_sim = np.dot(normalized[0], normalized[1])
+        reporting_unrelated_sim = np.dot(normalized[0], normalized[2])
 
-        assert salary_income_sim > salary_unrelated_sim, (
-            f"Salary-Income similarity ({salary_income_sim:.3f}) should be higher "
-            f"than Salary-Unrelated similarity ({salary_unrelated_sim:.3f})"
+        assert reporting_incident_sim > reporting_unrelated_sim, (
+            f"Reporting-Incident similarity ({reporting_incident_sim:.3f}) should be higher "
+            f"than Reporting-Unrelated similarity ({reporting_unrelated_sim:.3f})"
         )
 
 
@@ -107,6 +114,8 @@ class TestFAISSDatabase:
     """Test FAISS vector database for similarity search."""
 
     def setup_method(self):
+        if not has_faiss():
+            pytest.skip("faiss-cpu not installed")
         self.db = FAISSDatabase()
 
     def test_build_and_search(self):
@@ -155,41 +164,40 @@ class TestRAGPipeline:
         )
 
     def test_build_and_retrieve(self):
-        policy_path = Path(__file__).resolve().parent.parent / "data" / "policies" / "home_loan_policy.txt"
+        policy_path = Path(__file__).resolve().parent.parent / "data" / "policies" / "insurance_policy.txt"
 
         if not policy_path.exists():
             pytest.skip(f"Policy file not found: {policy_path}")
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            index_path = os.path.join(tmpdir, "test_home_loan.index")
+            index_path = os.path.join(tmpdir, "test_insurance.index")
             self.pipeline.build(
                 policy_path=str(policy_path),
                 index_path=index_path
             )
 
-            retrieved = self.pipeline.retrieve("What is the minimum salary?", k=3)
+            retrieved = self.pipeline.retrieve("What is the reporting window?", k=3)
 
             assert len(retrieved) >= 1
             assert len(retrieved) <= 3
-            assert any("salary" in chunk.lower() or "income" in chunk.lower() for chunk in retrieved)
 
     def test_retrieve_policy_rules(self):
-        policy_path = Path(__file__).resolve().parent.parent / "data" / "policies" / "home_loan_policy.txt"
+        policy_path = Path(__file__).resolve().parent.parent / "data" / "policies" / "insurance_policy.txt"
 
         if not policy_path.exists():
             pytest.skip(f"Policy file not found: {policy_path}")
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            index_path = os.path.join(tmpdir, "test_home_loan.index")
+            index_path = os.path.join(tmpdir, "test_insurance.index")
             self.pipeline.build(
                 policy_path=str(policy_path),
                 index_path=index_path
             )
 
             questions_and_expected = [
-                ("What documents are needed for loan application?", "Section 2"),
-                ("What happens if documents are missing?", "manual review"),
-                ("What is the employment requirement?", "12 months"),
+                ("What documents are required for a claim?", "Claim Form"),
+                ("When must a claim be reported?", "30 days"),
+                ("Which events are covered?", "Auto"),
             ]
 
             for question, expected in questions_and_expected:

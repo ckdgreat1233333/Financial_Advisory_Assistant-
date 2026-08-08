@@ -1,78 +1,87 @@
 from agents.document_agent import DocumentAgent
-from agents.policy_agent import PolicyAgent
-from agents.risk_agent import RiskAgent
+from agents.policy_agent import PolicyInterpretationAgent
+from agents.fraud_agent import FraudDetectionAgent
+from agents.escalation_agent import EscalationDecisionAgent
 from agents.customer_agent import CustomerAgent
-from models.application import LoanApplication
+from models.claim import Claim
 from models.document import Document
-from models.extracted_data import ExtractedData
+from models.extracted_data import ClaimExtractedData
 from models.policy import PolicyResult
-from models.risk import RiskAssessment
+from models.fraud import FraudAssessment
+from models.escalation import EscalationDecision
 from models.audit import AuditEntry
-from utils.enums import ApplicationStatus, DocumentType, AuditSeverity, AgentType, ValidationStatus, ValidationError
+from utils.enums import ClaimStatus, DocumentType, AuditSeverity, AgentType, ValidationStatus, ValidationError
 from typing import List, Any
 from datetime import datetime
 import uuid, dataclasses, json, os
 
 
-class LoanProcessingOrchestrator:
+class ClaimsProcessingOrchestrator:
     """
-    Main coordinator for the Intelligent Loan Processing Assistant.
+    Main coordinator for the Insurance Claims Intelligence Platform.
 
     Flow:
-        Upload Documents
+        Claim Documents Uploaded
             ↓
-        DocumentAgent (extract & validate)
+        DocumentAgent (extract & validate claim text)
             ↓
-        PolicyAgent (compliance check)
+        PolicyInterpretationAgent (coverage check)
             ↓
-        RiskAgent (risk evaluation)
+        FraudDetectionAgent (rules + historical case similarity)
             ↓
-        [Human Review Checkpoint if needed]
+        EscalationDecisionAgent (confidence thresholds → HITL)
             ↓
-        CustomerAgent (for customer queries)
+        [Human Review Checkpoint if escalated]
+            ↓
+        CustomerAgent (claim status / explanation queries)
     """
 
     def __init__(self):
         self.document_agent = DocumentAgent()
-        self.policy_agent = PolicyAgent()
-        self.risk_agent = RiskAgent()
+        self.policy_agent = PolicyInterpretationAgent()
+        self.fraud_agent = FraudDetectionAgent()
+        self.escalation_agent = EscalationDecisionAgent()
         self.customer_agent = CustomerAgent()
 
     # -------------------------------
-    # Internal Business Workflow
+    # Internal Claim Workflow
     # -------------------------------
 
-    def process_application(
+    def process_claim(
         self,
-        application: LoanApplication,
+        claim: Claim,
         file_paths: List[str],
         document_types: List[str]
     ) -> dict:
         """
-        Process a complete loan application with multiple documents.
-        
+        Process a complete insurance claim with multiple documents.
+
         Args:
-            application: LoanApplication with customer and loan details
+            claim: Claim with claimant and claim details
             file_paths: List of file paths to uploaded documents
             document_types: List of document types corresponding to each file
-            
+
         Returns:
-            Dictionary with extracted data, policy result, risk assessment, and audit trail
+            Dictionary with extracted data, coverage result, fraud assessment,
+            escalation decision, and audit trail
         """
         extracted_data_list = []
         documents = []
         missing_docs = []
 
         required_doc_types = {
-            DocumentType.SALARY_SLIP,
-            DocumentType.BANK_STATEMENT,
-            DocumentType.EMPLOYMENT_LETTER,
+            DocumentType.CLAIM_FORM,
+            DocumentType.POLICY_DOCUMENT,
+            DocumentType.PROOF_OF_LOSS,
         }
 
         received_doc_types = set()
 
         for file_path, doc_type_str in zip(file_paths, document_types):
-            doc_type = DocumentType[doc_type_str.upper().replace(" ", "_").replace("-", "_")]
+            try:
+                doc_type = DocumentType[doc_type_str.upper().replace(" ", "_").replace("-", "_")]
+            except KeyError:
+                continue
             received_doc_types.add(doc_type)
 
             doc_result = self.document_agent.process(
@@ -96,66 +105,98 @@ class LoanProcessingOrchestrator:
             vs = doc_result.get("validation_status")
             vs_value = vs.value if hasattr(vs, 'value') else str(vs)
             if vs_value == "Valid" and doc_result.get("metadata", {}).get("extracted_data"):
-                from models.extracted_data import ExtractedData
-                ed = ExtractedData(**doc_result["metadata"]["extracted_data"])
+                ed = ClaimExtractedData(**doc_result["metadata"]["extracted_data"])
                 extracted_data_list.append(ed)
 
         missing_docs = [dt.value for dt in required_doc_types - received_doc_types]
 
+        cross_document_issues = self._check_cross_document_consistency(extracted_data_list)
+
         combined_extracted = self._combine_extracted_data(extracted_data_list)
 
-        policy_result = self.policy_agent.check_compliance(
-            application=application,
+        # Apply claim-level context that may not be in documents
+        if not combined_extracted.claimant_name and claim.claimant_name:
+            combined_extracted.claimant_name = claim.claimant_name
+        if not combined_extracted.claimed_amount and claim.claim_amount:
+            combined_extracted.claimed_amount = claim.claim_amount
+        if not combined_extracted.loss_description and claim.loss_description:
+            combined_extracted.loss_description = claim.loss_description
+        if not combined_extracted.policy_number and claim.policy_number:
+            combined_extracted.policy_number = claim.policy_number
+
+        policy_result = self.policy_agent.interpret_coverage(
+            claim=claim,
             extracted_data=combined_extracted,
             missing_docs=missing_docs
         )
 
-        risk_assessment = self.risk_agent.evaluate(
-            application=application,
+        fraud_assessment = self.fraud_agent.evaluate(
+            claim=claim,
             extracted_data=combined_extracted,
-            policy_result=policy_result
+            policy_result=policy_result,
+            documents=documents,
+            cross_document_issues=cross_document_issues
         )
 
-        application.application_status = self._determine_status(policy_result, risk_assessment)
-        application.documents = documents
-        application.risk = risk_assessment
-        application.policy = policy_result
+        escalation = self.escalation_agent.decide(
+            claim=claim,
+            policy_result=policy_result,
+            fraud_assessment=fraud_assessment
+        )
+
+        claim.claim_status = self._determine_status(escalation, policy_result, fraud_assessment)
+        claim.documents = documents
+        claim.fraud = fraud_assessment
+        claim.policy = policy_result
+        claim.escalation = escalation
 
         needs_human_review = (
-            policy_result.eligibility_status.value == "Manual Review" or
-            risk_assessment.recommendation.value == "Manual Review"
+            escalation.requires_human_review or
+            policy_result.requires_manual_review or
+            fraud_assessment.requires_manual_review
         )
+
+        claim.needs_human_review = needs_human_review
+        claim.human_review_reason = self._get_review_reason(policy_result, fraud_assessment, escalation)
 
         audit_entries = []
         audit_entries.append(AuditEntry(
             agent_name=AgentType.DOCUMENT_AGENT,
-            action="Document Processing",
+            action="Claim Document Processing",
             reason=f"Processed {len(documents)} document(s), missing: {missing_docs}",
             severity=AuditSeverity.INFO
         ))
         audit_entries.append(AuditEntry(
             agent_name=AgentType.POLICY_AGENT,
-            action="Policy Compliance Check",
-            reason=f"Status: {policy_result.eligibility_status.value}, Violations: {len(policy_result.violations)}",
-            severity=AuditSeverity.WARNING if policy_result.violations else AuditSeverity.INFO
+            action="Coverage Interpretation",
+            reason=f"Coverage: {policy_result.coverage_status.value}, Issues: {len(policy_result.policy_sections)}",
+            severity=AuditSeverity.WARNING if policy_result.coverage_status.value not in ("Covered",) else AuditSeverity.INFO
         ))
         audit_entries.append(AuditEntry(
-            agent_name=AgentType.RISK_AGENT,
-            action="Risk Evaluation",
-            reason=f"Risk Level: {risk_assessment.risk_level.value}, Score: {risk_assessment.risk_score}, Recommendation: {risk_assessment.recommendation.value}",
-            severity=AuditSeverity.WARNING if risk_assessment.risk_level.value in ("High", "Medium") else AuditSeverity.INFO
+            agent_name=AgentType.FRAUD_AGENT,
+            action="Fraud Screening",
+            reason=f"Fraud Level: {fraud_assessment.fraud_level.value}, Score: {fraud_assessment.fraud_score}, "
+                   f"Similarity: {fraud_assessment.similarity_score:.2f}" if fraud_assessment.similarity_score is not None else f"Similarity: N/A",
+            severity=AuditSeverity.WARNING if fraud_assessment.fraud_level.value in ("High", "Medium") else AuditSeverity.INFO
+        ))
+        audit_entries.append(AuditEntry(
+            agent_name=AgentType.ESCALATION_AGENT,
+            action="Escalation Decision",
+            reason=f"Decision: {escalation.decision.value}, Requires Human Review: {escalation.requires_human_review}",
+            severity=AuditSeverity.WARNING if escalation.requires_human_review else AuditSeverity.INFO
         ))
 
         return {
-            "application_id": application.application_id,
-            "application": application,
+            "claim_id": claim.claim_id,
+            "claim": claim,
             "extracted_data": combined_extracted,
             "documents": documents,
             "policy_result": policy_result,
-            "risk_assessment": risk_assessment,
+            "fraud_assessment": fraud_assessment,
+            "escalation_decision": escalation,
             "missing_documents": missing_docs,
             "needs_human_review": needs_human_review,
-            "human_review_reason": self._get_review_reason(policy_result, risk_assessment),
+            "human_review_reason": self._get_review_reason(policy_result, fraud_assessment, escalation),
             "audit_entries": audit_entries
         }
 
@@ -171,7 +212,7 @@ class LoanProcessingOrchestrator:
             if isinstance(obj, datetime):
                 return obj.isoformat()
             if isinstance(obj, _Enum):
-                return obj.name if isinstance(obj, ApplicationStatus) else obj.value
+                return obj.name if isinstance(obj, ClaimStatus) else obj.value
             if dataclasses.is_dataclass(obj):
                 d = {}
                 for f in dataclasses.fields(obj):
@@ -183,13 +224,14 @@ class LoanProcessingOrchestrator:
                 return {k: _to_dict(v) for k, v in obj.items()}
             return str(obj)
 
-        app_status = result.get("application").application_status if result.get("application") else None
+        claim_status = result.get("claim").claim_status if result.get("claim") else None
         serialized = {
-            "application_id": result.get("application_id"),
-            "application_status": app_status.name if app_status else None,
+            "claim_id": result.get("claim_id"),
+            "claim_status": claim_status.name if claim_status else None,
             "extracted_data": _to_dict(result.get("extracted_data")),
             "policy_result": _to_dict(result.get("policy_result")),
-            "risk_assessment": _to_dict(result.get("risk_assessment")),
+            "fraud_assessment": _to_dict(result.get("fraud_assessment")),
+            "escalation_decision": _to_dict(result.get("escalation_decision")),
             "documents": _to_dict(result.get("documents", [])),
             "missing_documents": result.get("missing_documents", []),
             "needs_human_review": result.get("needs_human_review", False),
@@ -198,26 +240,55 @@ class LoanProcessingOrchestrator:
         }
         return serialized
 
-    def _combine_extracted_data(self, data_list: List[ExtractedData]) -> ExtractedData:
-        combined = ExtractedData()
+    def _combine_extracted_data(self, data_list: List[ClaimExtractedData]) -> ClaimExtractedData:
+        combined = ClaimExtractedData()
         for data in data_list:
-            for field in ["monthly_salary", "employer", "employee_name", "employment_duration", "account_number", "average_monthly_balance"]:
+            for field in [
+                "claimant_name", "claim_number", "policy_number", "claim_type", "incident_date",
+                "incident_location", "claimed_amount", "loss_description",
+                "reported_amount", "cause_of_loss", "prior_claims",
+                "policy_inception_date", "coverage_limit", "diagnosis",
+                "treatment_cost", "vehicle_registration", "property_address"
+            ]:
                 value = getattr(data, field)
                 if value is not None:
                     setattr(combined, field, value)
         return combined
 
-    def _determine_status(self, policy_result: PolicyResult, risk_assessment: RiskAssessment) -> ApplicationStatus:
-        if policy_result.eligibility_status.value == "Manual Review" or risk_assessment.recommendation.value == "Manual Review":
-            return ApplicationStatus.MANUAL_REVIEW
-        return ApplicationStatus.POLICY_REVIEW
+    def _check_cross_document_consistency(self, data_list: List[ClaimExtractedData]) -> List[str]:
+        """Detect documents that belong to different claims/policies/insureds."""
+        issues = []
 
-    def _get_review_reason(self, policy_result: PolicyResult, risk_assessment: RiskAssessment) -> str:
+        claims = sorted({d.claim_number for d in data_list if d.claim_number})
+        policies = sorted({d.policy_number for d in data_list if d.policy_number})
+        claimants = sorted({d.claimant_name for d in data_list if d.claimant_name})
+
+        if len(claims) > 1:
+            issues.append(f"Documents reference different claim numbers: {', '.join(claims)}")
+        if len(policies) > 1:
+            issues.append(f"Documents reference different policy numbers: {', '.join(policies)}")
+        if len(claimants) > 1:
+            issues.append(f"Documents identify different insured persons: {', '.join(claimants)}")
+
+        return issues
+
+    def _determine_status(self, escalation: EscalationDecision, policy_result: PolicyResult,
+                          fraud_assessment: FraudAssessment) -> ClaimStatus:
+        if escalation.requires_human_review:
+            return ClaimStatus.MANUAL_REVIEW
+        if fraud_assessment.fraud_level.value == "High":
+            return ClaimStatus.FRAUD_SCREEN
+        return ClaimStatus.INTAKE
+
+    def _get_review_reason(self, policy_result: PolicyResult, fraud_assessment: FraudAssessment,
+                           escalation: EscalationDecision) -> str:
         reasons = []
-        if policy_result.eligibility_status.value == "Manual Review":
-            reasons.append("Policy requires manual review")
-        if risk_assessment.recommendation.value == "Manual Review":
-            reasons.append(f"High/Medium risk: {', '.join(risk_assessment.reasons)}")
+        if escalation.requires_human_review:
+            reasons.append("Escalation decision requires manual review")
+        if policy_result.requires_manual_review:
+            reasons.append("Coverage interpretation requires manual review")
+        if fraud_assessment.requires_manual_review:
+            reasons.append(f"High fraud risk: {'; '.join(fraud_assessment.reasons)}")
         return "; ".join(reasons) if reasons else "No review needed"
 
     # -------------------------------
@@ -226,17 +297,19 @@ class LoanProcessingOrchestrator:
 
     def submit_human_decision(
         self,
-        application_id: str,
+        claim_id: str,
         decision: str,
         reviewer: str,
         comments: str
     ) -> dict:
         """
-        Human-in-the-loop checkpoint for manual review cases.
+        Human-in-the-loop checkpoint for escalated claims.
+
+        The human officer makes the final decision. All overrides are
+        recorded in the audit trail.
         """
         from models.audit import AuditEntry
         from utils.enums import AuditSeverity, AgentType
-        from datetime import datetime
 
         audit_entry = AuditEntry(
             agent_name=AgentType.ORCHESTRATOR,
@@ -246,7 +319,7 @@ class LoanProcessingOrchestrator:
         )
 
         return {
-            "application_id": application_id,
+            "claim_id": claim_id,
             "decision": decision,
             "reviewer": reviewer,
             "comments": comments,
@@ -258,11 +331,7 @@ class LoanProcessingOrchestrator:
     # Customer Workflow
     # -------------------------------
 
-    def customer_chat(
-        self,
-        question: str,
-        mode: str = "friendly",
-    ) -> str:
+    def customer_chat(self, question: str, mode: str = "friendly") -> str:
         return self.customer_agent.answer(
             question=question,
             mode=mode,

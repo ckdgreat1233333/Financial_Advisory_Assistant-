@@ -1,401 +1,44 @@
 text,intent
-Show the risk factors.,RISK_QUERY
-Hi,GENERAL_QUERY
-Provide the income requirements.,POLICY_QUERY
-Thank you,GENERAL_QUERY
-Who are you,GENERAL_QUERY
-Good morning,GENERAL_QUERY
-Help me,GENERAL_QUERY
-Show the application progress.,APPLICATION_STATUS
+Where is my claim status?,CLAIM_STATUS
+What is the status of my claim?,CLAIM_STATUS
+Check my claim status.,CLAIM_STATUS
+Has my claim been accepted?,CLAIM_STATUS
+Why was my claim rejected?,CLAIM_EXPLANATION
+Why was my claim denied?,CLAIM_EXPLANATION
+Can you explain my claim decision?,CLAIM_EXPLANATION
+Explain the reason for my claim rejection.,CLAIM_EXPLANATION
+Why is my claim under review?,CLAIM_EXPLANATION
+What is the reason for my claim being accepted?,CLAIM_EXPLANATION
+Tell me why my claim was approved.,CLAIM_EXPLANATION
+Explain my claim outcome.,CLAIM_EXPLANATION
+What are the next steps for my claim?,NEXT_STEPS
+What should I do next?,NEXT_STEPS
+How do I appeal my claim?,NEXT_STEPS
+What documents should I submit next?,NEXT_STEPS
+How do I file an appeal?,NEXT_STEPS
+What happens after my claim is accepted?,NEXT_STEPS
+How do I get my claim payment?,NEXT_STEPS
+What are the next steps after rejection?,NEXT_STEPS
+Is fire damage covered?,POLICY_QUERY
+Is theft covered by my policy?,POLICY_QUERY
+What is the coverage limit?,POLICY_QUERY
+Does my policy cover flood damage?,POLICY_QUERY
+What does my policy exclude?,POLICY_QUERY
+What is the policy reporting window?,POLICY_QUERY
+Are pre existing conditions covered?,POLICY_QUERY
+What is the waiting period?,POLICY_QUERY
+What documents do I need to file a claim?,DOCUMENT_PROCESSING
+Which documents are required?,DOCUMENT_PROCESSING
+Upload my claim form.,DOCUMENT_PROCESSING
+Check my proof of loss.,DOCUMENT_PROCESSING
+What is a proof of loss?,DOCUMENT_PROCESSING
+Verify my medical report.,DOCUMENT_PROCESSING
 Hello,GENERAL_QUERY
-Tell me the processing fee.,POLICY_QUERY
-Please explain the income requirements.,POLICY_QUERY
 Hi,GENERAL_QUERY
-Check my bank statement.,DOCUMENT_PROCESSING
-Explain the processing fee.,POLICY_QUERY
-Assess the fraud indicators.,RISK_QUERY
-Why was the application progress.,APPLICATION_STATUS
-Read this loan application.,DOCUMENT_PROCESSING
-Evaluate this application high risk.,RISK_QUERY
-Does manual review required.,RISK_QUERY
-Is there any compliance issue.,RISK_QUERY
-Upload this income proof.,DOCUMENT_PROCESSING
-Why was my loan approved.,APPLICATION_STATUS
 Thank you,GENERAL_QUERY
-Check my loan approved.,APPLICATION_STATUS
-Provide the income requirements.,POLICY_QUERY
-What are the home loan policy.,POLICY_QUERY
-Help me,GENERAL_QUERY
-Check the financial risk.,RISK_QUERY
-Provide the home loan policy.,POLICY_QUERY
-Explain the interest rate policy.,POLICY_QUERY
-Help me,GENERAL_QUERY
-Check my salary slip.,DOCUMENT_PROCESSING
-I want to know the home loan policy.,POLICY_QUERY
-What are the required documents.,POLICY_QUERY
-Hi,GENERAL_QUERY
-Can you explain the personal loan policy.,POLICY_QUERY
-What can you do,GENERAL_QUERY
-Provide the interest rate policy.,POLICY_QUERY
-Hey,GENERAL_QUERY
-Analyze my salary slip.,DOCUMENT_PROCESSING
-Validate these supporting documents.,DOCUMENT_PROCESSING
-Please explain the home loan policy.,POLICY_QUERY
-Has the approval decision.,APPLICATION_STATUS
-Tell me the loan tenure rules.,POLICY_QUERY
-Can you tell me the rejection reason.,APPLICATION_STATUS
-Does there any compliance issue.,RISK_QUERY
-Check my bank statement.,DOCUMENT_PROCESSING
-Check the risk factors.,RISK_QUERY
-Examine my address proof.,DOCUMENT_PROCESSING
 Who are you,GENERAL_QUERY
-Review my salary slip.,DOCUMENT_PROCESSING
-Does this application high risk.,RISK_QUERY
-Review my employment certificate.,DOCUMENT_PROCESSING
-Evaluate the financial risk.,RISK_QUERY
-Can you explain the eligibility criteria.,POLICY_QUERY
-Explain my application rejected.,APPLICATION_STATUS
-Tell me manual review required.,RISK_QUERY
-Help me,GENERAL_QUERY
-Please check the rejection reason.,APPLICATION_STATUS
-Hey,GENERAL_QUERY
-Please check the application progress.,APPLICATION_STATUS
-Identify the financial risk.,RISK_QUERY
-Inspect this PDF document.,DOCUMENT_PROCESSING
-Hey,GENERAL_QUERY
-Process this loan application.,DOCUMENT_PROCESSING
-Explain the current loan status.,APPLICATION_STATUS
-Tell me the current loan status.,APPLICATION_STATUS
-I want to know the personal loan policy.,POLICY_QUERY
-Assess the financial risk.,RISK_QUERY
-Check the application flagged.,RISK_QUERY
-Validate this PDF document.,DOCUMENT_PROCESSING
-Assess the risk factors.,RISK_QUERY
-Please explain the required documents.,POLICY_QUERY
-Who are you,GENERAL_QUERY
-I want to know the home loan policy.,POLICY_QUERY
-What can you do,GENERAL_QUERY
-Read my employment certificate.,DOCUMENT_PROCESSING
-Does the policy violations.,RISK_QUERY
-Can you tell me the application progress.,APPLICATION_STATUS
-Explain my approval timeline.,APPLICATION_STATUS
-Assess there any compliance issue.,RISK_QUERY
-Thank you,GENERAL_QUERY
-Examine these supporting documents.,DOCUMENT_PROCESSING
-Does the policy violations.,RISK_QUERY
-Can you tell me the current loan status.,APPLICATION_STATUS
-Assess the financial risk.,RISK_QUERY
-Evaluate there any compliance issue.,RISK_QUERY
-Please check my approval timeline.,APPLICATION_STATUS
-Is manual review required.,RISK_QUERY
-Good evening,GENERAL_QUERY
-When will my application status.,APPLICATION_STATUS
-Help me,GENERAL_QUERY
-Validate my salary slip.,DOCUMENT_PROCESSING
-Does the financial risk.,RISK_QUERY
-Why is the financial risk.,RISK_QUERY
-Give me the eligibility criteria.,POLICY_QUERY
-Show my application processed.,APPLICATION_STATUS
-Give me the processing fee.,POLICY_QUERY
-Assess this application high risk.,RISK_QUERY
-Thank you,GENERAL_QUERY
-Why was the final decision.,APPLICATION_STATUS
-Is the policy violations.,RISK_QUERY
-Explain the application progress.,APPLICATION_STATUS
-What can you do,GENERAL_QUERY
-What is the approval decision.,APPLICATION_STATUS
-Show my loan approved.,APPLICATION_STATUS
-Tell me the processing fee.,POLICY_QUERY
-Give me the loan tenure rules.,POLICY_QUERY
-Why was the application progress.,APPLICATION_STATUS
-Explain this applicant risky.,RISK_QUERY
-Explain my application processed.,APPLICATION_STATUS
-Thanks,GENERAL_QUERY
-Show the application progress.,APPLICATION_STATUS
-Could you tell me the eligibility criteria.,POLICY_QUERY
-Why is the risk factors.,RISK_QUERY
-Help me,GENERAL_QUERY
-Hi,GENERAL_QUERY
-Please check the final decision.,APPLICATION_STATUS
-I want to know the eligibility criteria.,POLICY_QUERY
-Give me the home loan policy.,POLICY_QUERY
-Tell me the current loan status.,APPLICATION_STATUS
-Check this applicant risky.,RISK_QUERY
-Inspect this Aadhaar card.,DOCUMENT_PROCESSING
-Thank you,GENERAL_QUERY
-When will my loan approved.,APPLICATION_STATUS
-Give me the interest rate policy.,POLICY_QUERY
-Is there any compliance issue.,RISK_QUERY
-Validate this loan application.,DOCUMENT_PROCESSING
-Good evening,GENERAL_QUERY
-Hello,GENERAL_QUERY
-Please check my approval timeline.,APPLICATION_STATUS
-Hello,GENERAL_QUERY
-Evaluate manual review required.,RISK_QUERY
-Process this PDF document.,DOCUMENT_PROCESSING
-Explain manual review required.,RISK_QUERY
-What is my application processed.,APPLICATION_STATUS
-Is the risk factors.,RISK_QUERY
-Explain my application status.,APPLICATION_STATUS
-Verify my employment certificate.,DOCUMENT_PROCESSING
-Why was the application progress.,APPLICATION_STATUS
-Thank you,GENERAL_QUERY
-Read these supporting documents.,DOCUMENT_PROCESSING
-I want to know the loan tenure rules.,POLICY_QUERY
-Why is the missing documents.,RISK_QUERY
-Explain the CIBIL score requirement.,POLICY_QUERY
-Check the financial risk.,RISK_QUERY
-Tell me the application progress.,APPLICATION_STATUS
-What can you do,GENERAL_QUERY
-Assess this application high risk.,RISK_QUERY
-Explain there any compliance issue.,RISK_QUERY
-Review these supporting documents.,DOCUMENT_PROCESSING
-Explain manual review required.,RISK_QUERY
-When will the approval decision.,APPLICATION_STATUS
-I want to know the interest rate policy.,POLICY_QUERY
-Explain the rejection reason.,APPLICATION_STATUS
-Examine my bank statement.,DOCUMENT_PROCESSING
-What is the rejection reason.,APPLICATION_STATUS
-Give me the CIBIL score requirement.,POLICY_QUERY
-What are the processing fee.,POLICY_QUERY
-Validate this Aadhaar card.,DOCUMENT_PROCESSING
-Check there any compliance issue.,RISK_QUERY
-Evaluate the policy violations.,RISK_QUERY
-Examine these supporting documents.,DOCUMENT_PROCESSING
-Process this PDF document.,DOCUMENT_PROCESSING
-Upload this Aadhaar card.,DOCUMENT_PROCESSING
-Could you tell me the required documents.,POLICY_QUERY
-Read this Aadhaar card.,DOCUMENT_PROCESSING
-Please check the current loan status.,APPLICATION_STATUS
-Check this application high risk.,RISK_QUERY
-Examine my bank statement.,DOCUMENT_PROCESSING
-Hey,GENERAL_QUERY
-Explain the policy violations.,RISK_QUERY
-Please check my approval timeline.,APPLICATION_STATUS
-Explain my application rejected.,APPLICATION_STATUS
-Tell me my application processed.,APPLICATION_STATUS
-Good evening,GENERAL_QUERY
-Evaluate the risk factors.,RISK_QUERY
-Analyze this PAN card.,DOCUMENT_PROCESSING
-Help me,GENERAL_QUERY
-Show manual review required.,RISK_QUERY
-Help me,GENERAL_QUERY
-Upload my bank statement.,DOCUMENT_PROCESSING
-Who are you,GENERAL_QUERY
-Inspect my salary slip.,DOCUMENT_PROCESSING
-When will my approval timeline.,APPLICATION_STATUS
-Validate my address proof.,DOCUMENT_PROCESSING
-Examine my salary slip.,DOCUMENT_PROCESSING
-What can you do,GENERAL_QUERY
-Show my application rejected.,APPLICATION_STATUS
-Tell me my loan approved.,APPLICATION_STATUS
-When will the current loan status.,APPLICATION_STATUS
-When will the rejection reason.,APPLICATION_STATUS
-Has my application processed.,APPLICATION_STATUS
-Analyze my employment certificate.,DOCUMENT_PROCESSING
-Hey,GENERAL_QUERY
-Provide the personal loan policy.,POLICY_QUERY
-Please explain the home loan policy.,POLICY_QUERY
-Please explain the required documents.,POLICY_QUERY
-Evaluate the application flagged.,RISK_QUERY
-Show the fraud indicators.,RISK_QUERY
-Examine these supporting documents.,DOCUMENT_PROCESSING
-Give me the personal loan policy.,POLICY_QUERY
-Check my address proof.,DOCUMENT_PROCESSING
-Hi,GENERAL_QUERY
-Show my application processed.,APPLICATION_STATUS
-Verify my bank statement.,DOCUMENT_PROCESSING
-Give me the processing fee.,POLICY_QUERY
-Review this PAN card.,DOCUMENT_PROCESSING
-Read these supporting documents.,DOCUMENT_PROCESSING
-What can you do,GENERAL_QUERY
-What are the income requirements.,POLICY_QUERY
-Identify there any compliance issue.,RISK_QUERY
-Upload this PAN card.,DOCUMENT_PROCESSING
-Tell me the CIBIL score requirement.,POLICY_QUERY
-Why is this application high risk.,RISK_QUERY
-Please check the application progress.,APPLICATION_STATUS
-Could you tell me the income requirements.,POLICY_QUERY
-Good evening,GENERAL_QUERY
-Check my application status.,APPLICATION_STATUS
-Good evening,GENERAL_QUERY
-Thank you,GENERAL_QUERY
-I want to know the home loan policy.,POLICY_QUERY
-Evaluate the financial risk.,RISK_QUERY
-What are the home loan policy.,POLICY_QUERY
-Explain the loan tenure rules.,POLICY_QUERY
-Check my employment certificate.,DOCUMENT_PROCESSING
-Check this application high risk.,RISK_QUERY
-Explain the processing fee.,POLICY_QUERY
-Examine this PDF document.,DOCUMENT_PROCESSING
-Explain the CIBIL score requirement.,POLICY_QUERY
-Provide the required documents.,POLICY_QUERY
-Why is the risk factors.,RISK_QUERY
-Could you tell me the interest rate policy.,POLICY_QUERY
-Check manual review required.,RISK_QUERY
-Why was my application status.,APPLICATION_STATUS
-Check the current loan status.,APPLICATION_STATUS
-Can you explain the required documents.,POLICY_QUERY
-Could you tell me the income requirements.,POLICY_QUERY
-Validate my salary slip.,DOCUMENT_PROCESSING
-Explain the current loan status.,APPLICATION_STATUS
-Hey,GENERAL_QUERY
-Verify this loan application.,DOCUMENT_PROCESSING
-Show me the required documents.,POLICY_QUERY
-Assess the financial risk.,RISK_QUERY
-Good evening,GENERAL_QUERY
-Upload my salary slip.,DOCUMENT_PROCESSING
-Tell me the collateral requirements.,POLICY_QUERY
-Show me the loan tenure rules.,POLICY_QUERY
-Hey,GENERAL_QUERY
-Hey,GENERAL_QUERY
-Review this PDF document.,DOCUMENT_PROCESSING
-Why is the missing documents.,RISK_QUERY
-Hey,GENERAL_QUERY
-Check the policy violations.,RISK_QUERY
-Verify my bank statement.,DOCUMENT_PROCESSING
-Assess the policy violations.,RISK_QUERY
-Verify my salary slip.,DOCUMENT_PROCESSING
-Thanks,GENERAL_QUERY
-Show this application high risk.,RISK_QUERY
-Evaluate the fraud indicators.,RISK_QUERY
-Explain the eligibility criteria.,POLICY_QUERY
-Check the final decision.,APPLICATION_STATUS
-Could you tell me the interest rate policy.,POLICY_QUERY
-Tell me my application processed.,APPLICATION_STATUS
-Thank you,GENERAL_QUERY
-Tell me the application flagged.,RISK_QUERY
-Can you explain the interest rate policy.,POLICY_QUERY
-Thank you,GENERAL_QUERY
-Explain the loan tenure rules.,POLICY_QUERY
-Thanks,GENERAL_QUERY
-Check the application progress.,APPLICATION_STATUS
-Has the current loan status.,APPLICATION_STATUS
-Assess manual review required.,RISK_QUERY
-Explain the missing documents.,RISK_QUERY
-Examine my bank statement.,DOCUMENT_PROCESSING
-Show me the loan tenure rules.,POLICY_QUERY
-Does there any compliance issue.,RISK_QUERY
-Tell me the financial risk.,RISK_QUERY
-Thank you,GENERAL_QUERY
-Evaluate manual review required.,RISK_QUERY
-Help me,GENERAL_QUERY
-What is the final decision.,APPLICATION_STATUS
-Help me,GENERAL_QUERY
-Evaluate the fraud indicators.,RISK_QUERY
-Verify this PDF document.,DOCUMENT_PROCESSING
-Inspect these supporting documents.,DOCUMENT_PROCESSING
-Good evening,GENERAL_QUERY
-Show my application rejected.,APPLICATION_STATUS
-Good evening,GENERAL_QUERY
-Review this Aadhaar card.,DOCUMENT_PROCESSING
-Why was the final decision.,APPLICATION_STATUS
-Check my salary slip.,DOCUMENT_PROCESSING
-Can you explain the processing fee.,POLICY_QUERY
-Check this Aadhaar card.,DOCUMENT_PROCESSING
-Please explain the required documents.,POLICY_QUERY
-I want to know the eligibility criteria.,POLICY_QUERY
-Read this PDF document.,DOCUMENT_PROCESSING
-Explain this applicant risky.,RISK_QUERY
-Is the application flagged.,RISK_QUERY
-Please explain the interest rate policy.,POLICY_QUERY
-Help me,GENERAL_QUERY
-What can you do,GENERAL_QUERY
-When will the rejection reason.,APPLICATION_STATUS
-Explain the application progress.,APPLICATION_STATUS
-What is my application status.,APPLICATION_STATUS
-Upload this income proof.,DOCUMENT_PROCESSING
-Is the fraud indicators.,RISK_QUERY
-Hey,GENERAL_QUERY
-Check the fraud indicators.,RISK_QUERY
-I want to know the processing fee.,POLICY_QUERY
-Tell me the financial risk.,RISK_QUERY
-Hey,GENERAL_QUERY
 What can you do,GENERAL_QUERY
 Good morning,GENERAL_QUERY
-Review this PAN card.,DOCUMENT_PROCESSING
-Validate these supporting documents.,DOCUMENT_PROCESSING
-Hi,GENERAL_QUERY
+Good evening,GENERAL_QUERY
+Thanks,GENERAL_QUERY
 Help me,GENERAL_QUERY
-I want to know the processing fee.,POLICY_QUERY
-Check my employment certificate.,DOCUMENT_PROCESSING
-Thanks,GENERAL_QUERY
-Hello,GENERAL_QUERY
-Tell me my approval timeline.,APPLICATION_STATUS
-What can you do,GENERAL_QUERY
-Evaluate this application high risk.,RISK_QUERY
-Check my bank statement.,DOCUMENT_PROCESSING
-What can you do,GENERAL_QUERY
-Thanks,GENERAL_QUERY
-Good morning,GENERAL_QUERY
-Read this PAN card.,DOCUMENT_PROCESSING
-Show me the personal loan policy.,POLICY_QUERY
-Evaluate the application flagged.,RISK_QUERY
-Inspect my bank statement.,DOCUMENT_PROCESSING
-Check this loan application.,DOCUMENT_PROCESSING
-Check these supporting documents.,DOCUMENT_PROCESSING
-Tell me the required documents.,POLICY_QUERY
-Check my address proof.,DOCUMENT_PROCESSING
-Hey,GENERAL_QUERY
-Can you tell me my application processed.,APPLICATION_STATUS
-Hey,GENERAL_QUERY
-Identify this applicant risky.,RISK_QUERY
-I want to know the required documents.,POLICY_QUERY
-Hi,GENERAL_QUERY
-Tell me the collateral requirements.,POLICY_QUERY
-Show the approval decision.,APPLICATION_STATUS
-Inspect my address proof.,DOCUMENT_PROCESSING
-Check my bank statement.,DOCUMENT_PROCESSING
-Process this Aadhaar card.,DOCUMENT_PROCESSING
-Please explain the eligibility criteria.,POLICY_QUERY
-Thank you,GENERAL_QUERY
-Read this PAN card.,DOCUMENT_PROCESSING
-Read this Aadhaar card.,DOCUMENT_PROCESSING
-Thanks,GENERAL_QUERY
-Inspect this PAN card.,DOCUMENT_PROCESSING
-Can you explain the processing fee.,POLICY_QUERY
-Check my application status.,APPLICATION_STATUS
-Can you explain the home loan policy.,POLICY_QUERY
-Tell me my application processed.,APPLICATION_STATUS
-Please check my application status.,APPLICATION_STATUS
-Check my employment certificate.,DOCUMENT_PROCESSING
-Explain the application flagged.,RISK_QUERY
-Show the approval decision.,APPLICATION_STATUS
-Review my address proof.,DOCUMENT_PROCESSING
-Tell me manual review required.,RISK_QUERY
-Show this applicant risky.,RISK_QUERY
-Why is there any compliance issue.,RISK_QUERY
-What is my approval timeline.,APPLICATION_STATUS
-Upload this loan application.,DOCUMENT_PROCESSING
-Can you tell me my application processed.,APPLICATION_STATUS
-Check the application progress.,APPLICATION_STATUS
-Has my application processed.,APPLICATION_STATUS
-Evaluate there any compliance issue.,RISK_QUERY
-Check my application rejected.,APPLICATION_STATUS
-Explain the loan tenure rules.,POLICY_QUERY
-Analyze this loan application.,DOCUMENT_PROCESSING
-Please explain the loan tenure rules.,POLICY_QUERY
-Check this income proof.,DOCUMENT_PROCESSING
-Has my application processed.,APPLICATION_STATUS
-Provide the eligibility criteria.,POLICY_QUERY
-Show me the CIBIL score requirement.,POLICY_QUERY
-Can you explain the home loan policy.,POLICY_QUERY
-Hey,GENERAL_QUERY
-Hi,GENERAL_QUERY
-Please check the application progress.,APPLICATION_STATUS
-Provide the required documents.,POLICY_QUERY
-Tell me my approval timeline.,APPLICATION_STATUS
-Assess the policy violations.,RISK_QUERY
-Tell me the CIBIL score requirement.,POLICY_QUERY
-Tell me the personal loan policy.,POLICY_QUERY
-Tell me the current loan status.,APPLICATION_STATUS
-Check this loan application.,DOCUMENT_PROCESSING
-Please explain the interest rate policy.,POLICY_QUERY
-Validate this Aadhaar card.,DOCUMENT_PROCESSING
-Is the risk factors.,RISK_QUERY
-Is the fraud indicators.,RISK_QUERY
-Please check the final decision.,APPLICATION_STATUS
-Check the final decision.,APPLICATION_STATUS
-Analyze my bank statement.,DOCUMENT_PROCESSING
-Please check the final decision.,APPLICATION_STATUS
-What are the home loan policy.,POLICY_QUERY

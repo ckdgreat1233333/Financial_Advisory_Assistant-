@@ -11,3 +11,23 @@
 __pycache__/
 **/__pycache__/
 *.py[cod]
+
+# Test cache
+.pytest_cache/
+**/.pytest_cache/
+
+# SQLite database (and WAL/SHM sidecar files)
+database/data/*.db
+database/data/*.db-wal
+database/data/*.db-shm
+
+# Faiss vector index
+database/faiss_index.bin
+data/indexes/*.bin
+
+# Uploaded claim documents
+data/uploads/
+
+# Misc OS/editor files
+.DS_Store
+Thumbs.db

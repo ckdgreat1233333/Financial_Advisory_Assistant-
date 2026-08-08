@@ -1,0 +1,8 @@
+CASE_ID: FC-002
+CASE_TYPE: Auto
+FRAUD_LEVEL: High
+FRAUD_INDICATORS: pre-existing damage; late reporting; fabricated police report
+RESOLUTION: Denied; damage pre-dated the policy
+
+NARRATIVE:
+The claimant reported a rear-end collision involving a luxury sedan with an estimated repair cost equal to ninety percent of the vehicle's insured value. The accident was reported thirty days after the alleged incident date, and the police report was issued retroactively after the claim was submitted. Inspection photos showed rust and wear inconsistent with a fresh impact. The claimant's phone records showed a service center estimate was obtained two weeks before the policy was purchased. The damage pattern matched a prior accident captured in the vehicle history report.

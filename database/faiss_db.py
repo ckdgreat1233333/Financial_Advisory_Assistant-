@@ -1,10 +1,21 @@
 """
 FAISS vector database for storing policy document embeddings.
 """
-import faiss
 import numpy as np
 import os
 from typing import List
+
+
+def _require_faiss():
+    try:
+        import faiss
+        return faiss
+    except ImportError:
+        raise ImportError(
+            "faiss-cpu is required for vector search. Install with: pip install faiss-cpu"
+        )
+
+
 class FAISSDatabase:
     """
     FAISS-based vector database for efficient similarity search of policy documents.
@@ -22,6 +33,7 @@ class FAISSDatabase:
         Args:
             embeddings: NumPy array of embeddings to index
         """
+        faiss = _require_faiss()
         embeddings = embeddings.astype(np.float32)
         self.dimension = embeddings.shape[1]
 
@@ -51,6 +63,7 @@ class FAISSDatabase:
             index_path: Path to the saved FAISS index file
         """
         try:
+            faiss = _require_faiss()
             self.index = faiss.read_index(index_path)
             print(f"Loaded FAISS index from {index_path}")
         except Exception as e:
@@ -67,6 +80,7 @@ class FAISSDatabase:
         try:
             if self.index is not None:
                 os.makedirs(os.path.dirname(index_path), exist_ok=True)
+                faiss = _require_faiss()
                 faiss.write_index(self.index, index_path)
                 print(f"Saved FAISS index to {index_path}")
         except Exception as e:

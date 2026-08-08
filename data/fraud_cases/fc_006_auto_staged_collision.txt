@@ -1,0 +1,8 @@
+CASE_ID: FC-006
+CASE_TYPE: Auto
+FRAUD_LEVEL: Medium
+FRAUD_INDICATORS: accident staged with friend; conflicting witness statements; delayed claim
+RESOLUTION: Denied after witness inconsistency analysis
+
+NARRATIVE:
+Two vehicles owned by relatives of the same person collided and both filed claims. The accident occurred on a quiet street with no traffic cameras. The two drivers gave conflicting accounts of the collision sequence during separate interviews. Both repair estimates were unusually high and issued by the same workshop. The vehicles had been insured with the company for only three weeks. One driver could not produce a valid driver's license at the time of the incident. The claims were submitted together from the same internet connection.

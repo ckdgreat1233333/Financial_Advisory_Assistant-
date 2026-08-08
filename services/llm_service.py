@@ -29,17 +29,28 @@ class LLMService:
         temperature: float = 0.2,
         max_tokens: int = 512,
     ) -> str:
-        response = self.client.chat.completions.create(
-            model=self.model,
-            messages=[
-                {
-                    "role": "user",
-                    "content": prompt,
-                }
-            ],
-            temperature=temperature,
-            max_tokens=max_tokens,
-        )
+        messages = [
+            {
+                "role": "user",
+                "content": prompt,
+            }
+        ]
+        kwargs = {
+            "model": self.model,
+            "messages": messages,
+            "temperature": temperature,
+        }
+        # Reasoning models (e.g. gpt-oss) consume the token budget on
+        # reasoning and return empty content when max_tokens is used.
+        # Prefer max_completion_tokens, which only caps the final answer.
+        try:
+            response = self.client.chat.completions.create(
+                **kwargs, max_completion_tokens=max_tokens
+            )
+        except Exception:
+            response = self.client.chat.completions.create(
+                **kwargs, max_tokens=max_tokens
+            )
 
         return response.choices[0].message.content.strip()
 

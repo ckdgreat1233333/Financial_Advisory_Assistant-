@@ -3,7 +3,7 @@ from document_processing.ocr import OCRProcessor
 from document_processing.extractor import InformationExtractor
 from document_processing.validator import DocumentValidator
 from models.document import Document
-from models.extracted_data import ExtractedData
+from models.extracted_data import ClaimExtractedData
 from utils.enums import DocumentType, ValidationStatus, ValidationError
 from datetime import datetime
 import uuid

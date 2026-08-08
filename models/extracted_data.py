@@ -3,43 +3,48 @@ from typing import Optional, Any
 
 
 @dataclass(kw_only=True)
-class ExtractedData:
+class ClaimExtractedData:
     """
-    Structured information extracted from customer documents.
+    Structured information extracted from insurance claim documents.
 
     This object is produced by the Document Agent and consumed by
-    the Policy Agent and Risk Agent.
+    the Policy Interpretation Agent and Fraud Detection Agent.
     """
 
     # ---------------------------------------------------------
-    # Salary Slip
+    # Claim Form
     # ---------------------------------------------------------
-    monthly_salary: Optional[float] = None
-    employer: Optional[str] = None
-    employee_name: Optional[str] = None
-    employment_duration: Optional[str] = None
-    designation: Optional[str] = None
+    claimant_name: Optional[str] = None
+    claim_number: Optional[str] = None
+    policy_number: Optional[str] = None
+    claim_type: Optional[str] = None
+    incident_date: Optional[str] = None
+    incident_location: Optional[str] = None
+    claimed_amount: Optional[float] = None
+    loss_description: Optional[str] = None
 
     # ---------------------------------------------------------
-    # Bank Statement
+    # Proof of Loss / Incident Report
     # ---------------------------------------------------------
-    account_number: Optional[str] = None
-    average_monthly_balance: Optional[float] = None
-    bank_name: Optional[str] = None
+    reported_amount: Optional[float] = None
+    cause_of_loss: Optional[str] = None
+    third_party_involved: Optional[str] = None
+    witness_count: Optional[int] = None
 
     # ---------------------------------------------------------
-    # PAN Card
+    # Medical / Vehicle / Property (type specific)
     # ---------------------------------------------------------
-    pan_number: Optional[str] = None
-    name_on_pan: Optional[str] = None
+    diagnosis: Optional[str] = None
+    treatment_cost: Optional[float] = None
+    vehicle_registration: Optional[str] = None
+    property_address: Optional[str] = None
 
     # ---------------------------------------------------------
-    # Aadhaar Card
+    # Prior claim context (from policy documents)
     # ---------------------------------------------------------
-    aadhaar_number: Optional[str] = None
-    name_on_aadhaar: Optional[str] = None
-    date_of_birth: Optional[str] = None
-    address: Optional[str] = None
+    prior_claims: Optional[int] = None
+    policy_inception_date: Optional[str] = None
+    coverage_limit: Optional[float] = None
 
     # ---------------------------------------------------------
     # Explainability
@@ -70,6 +75,7 @@ class ExtractedData:
         policy evaluation is available.
         """
         return (
-            self.monthly_salary is not None
-            and self.employee_name is not None
+            self.claimant_name is not None
+            and self.claimed_amount is not None
+            and self.loss_description is not None
         )

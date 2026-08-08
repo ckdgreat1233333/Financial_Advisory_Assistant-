@@ -2,31 +2,33 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Optional, Any
 
-from utils.enums import EligibilityStatus
+from utils.enums import CoverageStatus
 
 
 @dataclass(kw_only=True)
 class PolicyResult:
     """
-    Final output of the Policy Agent.
+    Final output of the Policy Interpretation Agent.
 
-    Contains both the compliance decision and all evidence used
+    Contains both the coverage decision and all evidence used
     to reach that decision.
     """
 
     # ---------------------------------------------------------
     # Decision
     # ---------------------------------------------------------
-    eligibility_status: EligibilityStatus
+    coverage_status: CoverageStatus
 
     confidence_score: float
 
     explanation: str
 
     # ---------------------------------------------------------
-    # Compliance Details
+    # Coverage Details
     # ---------------------------------------------------------
-    violations: list[str] = field(default_factory=list)
+    applicable_clauses: list[str] = field(default_factory=list)
+
+    exclusions: list[str] = field(default_factory=list)
 
     policy_sections: list[str] = field(default_factory=list)
 
@@ -37,7 +39,7 @@ class PolicyResult:
 
     retrieved_sources: list[str] = field(default_factory=list)
 
-    matched_rules: list[str] = field(default_factory=list)
+    matched_clauses: list[str] = field(default_factory=list)
 
     supporting_evidence: list[str] = field(default_factory=list)
 
@@ -61,17 +63,19 @@ class PolicyResult:
 @dataclass(kw_only=True)
 class PolicyRules:
     """
-    Parsed loan policy configuration.
+    Parsed insurance policy configuration.
     """
 
-    minimum_salary: Optional[int] = None
+    minimum_policy_lapse_days: Optional[int] = None
 
-    preferred_employment: list[str] = field(default_factory=list)
+    covered_events: list[str] = field(default_factory=list)
+
+    exclusions: list[str] = field(default_factory=list)
 
     required_documents: list[str] = field(default_factory=list)
 
-    maximum_loan_multiplier: Optional[float] = None
+    coverage_limits: dict[str, float] = field(default_factory=dict)
 
     manual_review_conditions: list[str] = field(default_factory=list)
 
-    risk_conditions: list[str] = field(default_factory=list)
+    fraud_conditions: list[str] = field(default_factory=list)

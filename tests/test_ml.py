@@ -16,7 +16,7 @@ class TestTextPreprocessor:
         assert TextPreprocessor.clean("HELLO WORLD") == "hello world"
 
     def test_clean_remove_punctuation(self):
-        result = TextPreprocessor.clean("What's the salary? \u20b950,000")
+        result = TextPreprocessor.clean("What's the coverage? \u20b950,000")
         assert "?" not in result
         assert "\u20b9" not in result
         assert "'" not in result
@@ -29,7 +29,7 @@ class TestTextPreprocessor:
         assert TextPreprocessor.clean("  hello world  ") == "hello world"
 
     def test_clean_preserves_important_numbers(self):
-        result = TextPreprocessor.clean("salary 50000 rupees")
+        result = TextPreprocessor.clean("claim amount 50000 rupees")
         assert "50000" in result
 
 
@@ -42,9 +42,9 @@ class TestIntentClassifier:
 
     def test_predict_policy_query(self):
         queries = [
-            "What documents are required for a home loan?",
-            "Explain the eligibility criteria",
-            "Tell me the interest rate policy",
+            "What is the coverage for fire damage?",
+            "Are pre existing conditions excluded?",
+            "Tell me about the waiting period",
         ]
         for query in queries:
             intent = self.classifier.predict(query)
@@ -52,35 +52,44 @@ class TestIntentClassifier:
 
     def test_predict_document_processing(self):
         queries = [
-            "Upload my salary slip",
+            "Upload my claim form",
             "Process this PDF document",
-            "Validate my bank statement",
-            "Read my PAN card",
-            "Review my Aadhaar",
+            "Verify my proof of loss",
+            "Where do I submit the medical report?",
         ]
         for query in queries:
             intent = self.classifier.predict(query)
             assert intent == IntentType.DOCUMENT_PROCESSING, f"'{query}' should be DOCUMENT_PROCESSING, got {intent}"
 
-    def test_predict_application_status(self):
+    def test_predict_claim_status(self):
         queries = [
-            "Why was my loan application rejected?",
-            "Show me the current loan status",
-            "What is the approval timeline?",
+            "Where is my claim status?",
+            "Show me the current claim status",
+            "Has my claim been accepted?",
         ]
         for query in queries:
             intent = self.classifier.predict(query)
-            assert intent == IntentType.APPLICATION_STATUS, f"'{query}' should be APPLICATION_STATUS, got {intent}"
+            assert intent == IntentType.CLAIM_STATUS, f"'{query}' should be CLAIM_STATUS, got {intent}"
 
-    def test_predict_risk_query(self):
+    def test_predict_claim_explanation(self):
         queries = [
-            "Is this application high risk?",
-            "What are the risk factors?",
-            "Are there compliance issues?",
+            "Why was my claim rejected?",
+            "Explain the claim decision",
+            "What is the reason for denial?",
         ]
         for query in queries:
             intent = self.classifier.predict(query)
-            assert intent == IntentType.RISK_QUERY, f"'{query}' should be RISK_QUERY, got {intent}"
+            assert intent == IntentType.CLAIM_EXPLANATION, f"'{query}' should be CLAIM_EXPLANATION, got {intent}"
+
+    def test_predict_next_steps(self):
+        queries = [
+            "What are the next steps?",
+            "How do I appeal the decision?",
+            "What happens after review?",
+        ]
+        for query in queries:
+            intent = self.classifier.predict(query)
+            assert intent == IntentType.NEXT_STEPS, f"'{query}' should be NEXT_STEPS, got {intent}"
 
     def test_predict_general_query(self):
         queries = [
@@ -109,13 +118,23 @@ class TestIntentModelTrainer:
         required_intents = {
             IntentType.POLICY_QUERY.name,
             IntentType.DOCUMENT_PROCESSING.name,
-            IntentType.APPLICATION_STATUS.name,
-            IntentType.RISK_QUERY.name,
+            IntentType.CLAIM_STATUS.name,
+            IntentType.CLAIM_EXPLANATION.name,
+            IntentType.NEXT_STEPS.name,
             IntentType.GENERAL_QUERY.name,
         }
         actual_intents = set(df["intent"].unique())
         missing = required_intents - actual_intents
         assert not missing, f"Dataset missing intents: {missing}"
+
+    def test_dataset_has_no_legacy_intents(self):
+        import pandas as pd
+        dataset_path = Path(__file__).resolve().parent.parent / "data" / "intents" / "intents.csv"
+        df = pd.read_csv(dataset_path)
+
+        legacy = {"APPLICATION_STATUS", "RISK_QUERY"}
+        actual_intents = set(df["intent"].unique())
+        assert not (legacy & actual_intents), f"Dataset contains legacy loan intents: {legacy & actual_intents}"
 
     def test_trained_model_exists(self):
         model_path = Path(__file__).resolve().parent.parent / "trained_models" / "intent_classifier.pkl"

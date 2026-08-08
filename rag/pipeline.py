@@ -37,11 +37,18 @@ class RAGPipeline:
         self.chunks = self.chunker.chunk(policy)
 
         index_file = Path(index_path)
+        loaded = False
 
         if index_file.exists():
             self.database.load(index_path)
 
-        else:
+            if (
+                self.database.index is not None
+                and self.database.index.ntotal == len(self.chunks)
+            ):
+                loaded = True
+
+        if not loaded:
             embeddings = self.embedder.embed(
                 self.chunks
             )

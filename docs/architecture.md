@@ -1,174 +1,167 @@
-# Architecture Documentation — Intelligent Loan Processing Assistant
+# Architecture Documentation — Insurance Claims Intelligence Platform
 
-> Enterprise architecture for a compliant, explainable, multi-agent loan processing system using ML, RAG, and LLM orchestration.
+> Enterprise architecture for a compliant, explainable, multi-agent insurance claims processing system using ML, RAG, and LLM orchestration.
 
 ---
 
 ## 1. System Architecture
 
 ```
-┌────────────────────────────────────────────────────────────────────────────┐
-│                          CLIENT LAYER                                       │
-│                                                                            │
-│   ┌──────────────────────────┐    ┌──────────────────────────────────┐    │
-│   │   Vanilla JS SPA         │    │   React 19 + Tailwind SPA        │    │
-│   │   (static/index.html)    │    │   (loan-lifecycle UI)            │    │
-│   │   - Customer Portal      │    │   - Customer Dashboard           │    │
-│   │   - Officer Queue        │    │   - Officer Ops Center           │    │
-│   │   - AI Chat              │    │   - AI Assistant with Grounding  │    │
-│   └──────────┬───────────────┘    └──────────────┬───────────────────┘    │
-│              │                                    │                        │
-└──────────────┼────────────────────────────────────┼────────────────────────┘
-               │           HTTP REST (JSON)         │
-               └────────────────┬───────────────────┘
-                                │
-┌───────────────────────────────┼───────────────────────────────────────────┐
-│                      ┌───────▼────────┐                                  │
-│                      │  FastAPI App   │                                  │
-│                      │   (app.py)     │                                  │
-│                      │   Port 8000    │                                  │
-│                      └───────┬────────┘                                  │
-│                              │                                            │
-│         ┌────────────────────┼────────────────────┐                      │
-│         ▼                    ▼                    ▼                      │
-│   ┌──────────┐         ┌──────────┐         ┌──────────┐                │
-│   │  Auth    │         │  Loan    │         │ Chat &   │                │
-│   │  Routes  │         │  CRUD    │         │Analytics │                │
-│   └──────────┘         └────┬─────┘         └────┬─────┘                │
-│                             │                    │                        │
-│                    ┌────────▼────────┐           │                        │
-│                    │   Orchestrator  │           │                        │
-│                    │  (Agent Flow)   │           │                        │
-│                    └────────┬────────┘           │                        │
-│                             │                    │                        │
-│              ┌──────────────┼──────────────┐     │                        │
-│              ▼              ▼              ▼     │                        │
-│      ┌────────────┐ ┌────────────┐ ┌──────────┐ │                        │
-│      │ Document   │ │  Policy    │ │   Risk   │ │                        │
-│      │   Agent    │ │   Agent    │ │   Agent  │ │                        │
-│      └──────┬─────┘ └──────┬─────┘ └────┬─────┘ │                        │
-│             │              │            │        │                        │
-│             ▼              ▼            ▼        │                        │
-│      ┌────────────┐ ┌────────────┐ ┌──────────┐ │                        │
-│      │  Document  │ │  Policy    │ │   Risk   │ │                        │
-│      │ Processor  │ │  Service   │ │  Service │ │                        │
-│      └──────┬─────┘ │  (RAG)     │ └────┬─────┘ │                        │
-│             │       └──────┬─────┘      │       │                        │
-│             ▼              │            │       │                        │
-│      ┌────────────┐       │            │       │                        │
-│      │   PDF      │       │            │       │                        │
-│      │   Reader   │       │            │       │                        │
-│      │   OCR      │       │            │       │                        │
-│      │  Extractor │       │            │       │                        │
-│      │ Validator  │       │            │       │                        │
-│      └────────────┘       │            │       │                        │
-│                           ▼            ▼       │                        │
-│                    ┌──────────────────────┐    │                        │
-│                    │    LLM Service       │    │                        │
-│                    │  (Ollama / Gemini)   │    │                        │
-│                    └──────────────────────┘    │                        │
-│                                                │                        │
-└────────────────────────────────────────────────┼────────────────────────┘
-                                                 │
-                    ┌────────────────────────────┼──────────────┐
-                    │                            │              │
-                    ▼                            ▼              ▼
-          ┌─────────────────┐         ┌────────────────┐ ┌──────────┐
-          │    SQLite DB     │         │   FAISS Index  │ │Prompts   │
-          │  - users         │         │  (vector DB)   │ │ (txt)    │
-          │  - applications  │         │  384-dim       │ │          │
-          │  - audit_logs    │         │  all-MiniLM    │ │          │
-          │  - policy_docs   │         │  L2 v2         │ │          │
-          │  - faq           │         └────────────────┘ └──────────┘
-          └─────────────────┘
+┌────────────────────────────────────────────────────────────────────────┐
+│                          CLIENT LAYER                                   │
+│                                                                        │
+│              Vanilla JS SPA — ClaimsGuard AI                           │
+│              (static/index.html, served at "/")                       │
+│              - Customer Portal: My Claims, Submit Claim, AI Chat      │
+│              - Officer Queue:  triage, doc review, accept/reject      │
+│              - Audit Ledger + Admin                                   │
+└───────────────────────────────┬────────────────────────────────────────┘
+                                │  HTTP REST (JSON)
+┌───────────────────────────────┼────────────────────────────────────────┐
+│                       ┌───────▼────────┐                              │
+│                       │  FastAPI App   │                              │
+│                       │   (app.py)     │                              │
+│                       │   Port 8000    │                              │
+│                       └───────┬────────┘                              │
+│                               │                                        │
+│                   ┌───────────┼───────────────┐                       │
+│                   ▼           ▼               ▼                       │
+│            ┌──────────┐  ┌──────────┐   ┌───────────┐                 │
+│            │  Auth    │  │ Claims   │   │ Chat &    │                 │
+│            │  Routes  │  │  CRUD    │   │ Analytics │                 │
+│            └──────────┘  └────┬─────┘   └───────────┘                 │
+│                               │                                        │
+│                    ┌──────────▼──────────┐                            │
+│                    │   Orchestrator      │                            │
+│                    │  (Agent Flow)       │                            │
+│                    └──────────┬──────────┘                            │
+│                               │                                        │
+│              ┌────────────────┼────────────────┐                      │
+│              ▼                ▼                ▼                      │
+│     ┌────────────────┐ ┌─────────────┐ ┌───────────────┐             │
+│     │  Document      │ │   Policy    │ │   Fraud       │             │
+│     │  Agent         │ │Interpretation│ │  Detection    │             │
+│     └──────┬─────────┘ └──────┬──────┘ └──────┬────────┘             │
+│            │                  │               │                       │
+│            ▼                  ▼               ▼                       │
+│     ┌────────────┐   ┌────────────┐   ┌─────────────────────┐         │
+│     │  Document  │   │  Policy    │   │  FraudCaseService   │         │
+│     │ Processor  │   │  Service   │   │ (historical case    │         │
+│     │ (PDF/OCR/  │   │  (RAG)     │   │  similarity via FAISS)│       │
+│     │  extract)  │   └──────┬─────┘   └──────────┬──────────┘         │
+│     └──────┬─────┘          │                    │                    │
+│            │                ▼                    ▼                    │
+│            │        ┌───────────────────────────────┐                 │
+│            │        │  Escalation Decision Agent   │                 │
+│            │        │  (HITL checkpoint)           │                 │
+│            │        └───────────────┬───────────────┘                 │
+│            │                        │                                 │
+│            ▼                        ▼                                 │
+│     ┌───────────────────────────────────────────────┐                 │
+│     │            LLM Service (Groq / OpenAI SDK)    │                 │
+│     │       explanation + grounded customer chat    │                 │
+│     └───────────────────────────────────────────────┘                 │
+│                                                                        │
+└──────────────────────────────────┬─────────────────────────────────────┘
+                                   │
+              ┌────────────────────┼─────────────────┐
+              ▼                    ▼                 ▼
+    ┌─────────────────┐   ┌────────────────┐  ┌────────────┐
+    │    SQLite DB     │   │   FAISS Index  │  │ Prompts    │
+    │  users           │   │  (vector DB)   │  │ (txt)      │
+    │  claims          │   │  384-dim       │  │            │
+    │  fraud_cases     │   │  all-MiniLM    │  │            │
+    │  audit_logs      │   │  L2 v2         │  │            │
+    │  policy_docs,faq │   └────────────────┘  └────────────┘
+    └─────────────────┘
 ```
 
 ---
 
 ## 2. Data Flow
 
-### Business Track — Loan Application Processing
+### Business Track — Claim Processing
 
 ```
-Officer → POST /api/business/loan-application
-              │
-Customer → Upload Documents → POST /api/applications/{id}/documents
-              │
-              ▼
-    Orchestrator.process_application()
-              │
-    ┌─────────┼─────────┐
-    ▼         ▼         ▼
-Document   Policy    Risk
- Agent     Agent     Agent
-    │         │         │
-    ▼         ▼         ▼
- Validate  Check     Evaluate
- & Extract Compliance Risk Level
-              │
-              ▼
-         SQLite Store
-   (status + metadata + audit)
-              │
-              ▼
-    Officer Reviews → Approve/Reject
-              │
-              ▼
-         Audit Log
+Officer/Customer → POST /api/claims  (claimant, type, amount, incident, loss)
+      │
+      ▼
+Customer Uploads Documents → POST /api/claims/{id}/documents
+  (Claim Form, Policy Document, Proof of Loss, + type-specific)
+      │
+      ▼
+Orchestrator.process_claim()
+      │
+   ┌──┼─────────────┬────────────────┐
+   ▼  ▼             ▼                ▼
+Document        Policy          Fraud
+ Agent          Interpretation   Detection
+   │   Agent          Agent            Agent
+   ▼  │              │                │
+Validate &      Check           Rules + semantic
+Extract         coverage,      similarity to
+fields          limits,        historical fraud
+                exclusions,    cases (FAISS)
+                reporting
+      │              │                │
+      └──────────────┼────────────────┘
+                     ▼
+         Escalation Decision Agent
+         (HITL checkpoint decision)
+                     │
+   ┌─────────────────┼─────────────────┐
+   ▼                 ▼                 ▼
+Continue       Manual Review      Fraud Screen
+processing     (officer decides)  (mandatory review)
+                     │
+                     ▼
+         Officer Accept / Reject / Override
+                     │
+                     ▼
+              Audit Log (immutable)
 ```
 
-### Customer Track — Q&A with RAG
+### Customer Track — Grounded Q&A
 
 ```
 Customer Question → POST /api/chat
-              │
-              ▼
-    PolicyService.retrieve_context()
-              │
-    ┌─────────┴─────────┐
-    ▼                   ▼
- Chunker           Embedder
-(split policy   (SentenceTransformer
- by sections)    all-MiniLM-L6-v2)
-    │                   │
-    └─────────┬─────────┘
-              ▼
-      FAISS Search (top-3)
-              │
-              ▼
-    PromptService.load(template,
-       context, question)
-              │
-              ▼
-    LLMService.generate()
-              │
-              ▼
-    Grounded Response
-  (text + policyGrounding)
+      │
+      ▼
+IntentClassifier → route (status / explanation / policy / next-steps)
+      │
+      ▼
+PolicyService.retrieve_context()     → RAG (chunker → embed → FAISS search)
+      │
+      ├── matched policy rules        → rule-based answer (always available)
+      └── LLM (Groq) with persona     → grounded conversational answer
+      │
+      ▼
+Response { text, reasoning, intent, policyGrounding }
 ```
 
 ---
 
 ## 3. Agent Design
 
-| Agent         | Input                          | Processing                                    | Output                                          | Escalation               |
-|---------------|--------------------------------|-----------------------------------------------|-------------------------------------------------|--------------------------|
-| **Document**  | file_path, doc_type            | PDF→text, OCR fallback, regex extract, validate| extracted_text, ocr_confidence, validation_status, extracted_fields | OCR fail / low confidence → Manual Review |
-| **Policy**    | application, extracted_data, missing_docs | min salary check, loan multiplier check, missing doc check, employment duration | eligibility_status, violations[], explanation, confidence | Policy violations → Manual Review |
-| **Risk**      | application, extracted_data, policy_result | Match violations to risk rules, compute score, LLM explain | risk_level, risk_score, reasons[], llm_explain, triggered_rules[] | High risk → Manual Review |
+| Agent | Input | Processing | Output | Escalation |
+|-------|-------|-----------|--------|-----------|
+| **Document** | file_path, doc_type | PDF→text, OCR fallback, regex extraction, required-field validation | `ClaimExtractedData`, validation status/confidence | OCR fail / low confidence / missing fields |
+| **Policy Interpretation** | claim, extracted_data, missing_docs | Coverage scope, mandatory docs, coverage limits, 30-day reporting window, exclusions | `PolicyResult` (Covered / Not Covered / Manual Review), policy sections, explanation | Missing docs, amount over limit, exclusions, late reporting |
+| **Fraud Detection** | claim, extracted_data, policy_result | Policy-defined rules + semantic similarity to historical fraud cases | `FraudAssessment` (LOW/MEDIUM/HIGH, score, indicators, LLM explanation) | High risk or similarity ≥ 0.85 |
+| **Escalation Decision** | claim, policy_result, fraud_assessment | Combines coverage + fraud signals into a single recommendation | `EscalationDecision` (Continue / Escalate), next_step, rationale | Any High fraud risk, uncertain coverage |
 
 ### Orchestrator Flow
 
 ```
-process_application(application_id):
-  1. Load application + associated documents from DB
-  2. document_agent.process(documents)       → extracted fields + validation
-  3. policy_agent.check(application, fields) → violations + eligibility
-  4. risk_agent.evaluate(application, fields, violations) → risk level + score
-  5. Store results in DB
-  6. If High Risk or Policy Violation → status = "manual_review"
-  7. Else → status = "pending_officer" (ready for final decision)
-  8. Audit every step
+process_claim(claim, file_paths, document_types):
+  1. document_agent.process(each file)      → extracted data + validation
+  2. Merge extracted data across documents  → ClaimExtractedData
+  3. policy_agent.interpret_coverage(...)   → coverage status + policy sections
+  4. fraud_agent.evaluate(...)              → fraud level + similarity score
+  5. escalation_agent.decide(...)           → next_step + requires_human_review
+  6. Store results in DB metadata
+  7. If escalation.requires_human_review → status = MANUAL_REVIEW (HITL)
+  8. Officer Accept / Reject → recorded in audit trail
 ```
 
 ---
@@ -176,7 +169,7 @@ process_application(application_id):
 ## 4. RAG Pipeline
 
 ```
-Policy Document (home_loan_policy.txt)
+Policy Document (data/policies/insurance_policy.txt)
         │
         ▼
 ┌──────────────┐
@@ -192,7 +185,7 @@ Policy Document (home_loan_policy.txt)
        │
        ▼
 ┌──────────────┐
-│  FAISS Index │  IndexFlatL2 (L2 distance = cosine similarity)
+│  FAISS Index │  IndexFlatL2 (L2 distance ≈ cosine similarity)
 │              │  Saved to data/indexes/faiss_index.bin
 └──────┬───────┘
        │
@@ -202,7 +195,7 @@ Policy Document (home_loan_policy.txt)
        │
        ▼
 ┌──────────────┐
-│  Retriever   │  embed_query → FAISS.search(k=3) → return chunks
+│  Retriever   │  embed_query → FAISS.search(k=5) → return chunks
 └──────┬───────┘
        │
        ▼
@@ -218,9 +211,11 @@ Policy Document (home_loan_policy.txt)
 EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"  # 384-dim
 INDEX_TYPE = "IndexFlatL2"                                   # L2 distance
 CHUNK_PATTERN = r"(Section \d+ - .+)"                       # Split by section
-TOP_K = 3                                                    # Retrieve top-3 chunks
+TOP_K = 5                                                    # Retrieve top-5 chunks
 INDEX_PATH = "data/indexes/faiss_index.bin"
 ```
+
+> Graceful degradation: if `faiss` / `sentence-transformers` are not installed, the policy and fraud services fall back to rule-based logic so the platform remains fully functional; semantic similarity is simply omitted.
 
 ---
 
@@ -233,47 +228,33 @@ INDEX_PATH = "data/indexes/faiss_index.bin"
 │  AUTH FLOW                                                     │
 │                                                                │
 │  1. POST /api/auth/register → user created in SQLite           │
-│  2. POST /api/auth/login    → JWT issued (1h expiry)           │
-│  3. All /api/* routes       → JWT verified via middleware      │
+│  2. POST /api/auth/login    → JWT issued                       │
+│  3. Protected /api/* routes → JWT verified                     │
 │  4. Role-based access:                                         │
-│     - customer: own applications, chat                         │
-│     - officer:  all applications, process, decide              │
-│     - admin:    audit logs, hallucination logs                 │
+│     - customer: own claims, submit claim, chat                 │
+│     - officer:  claims queue, document review, accept/reject   │
+│     - admin:    audit logs, user management, policy documents  │
 └────────────────────────────────────────────────────────────────┘
 ```
 
 ### Audit Trail
 
-Every state-changing action is logged via `AuditService.log()`:
+Every state-changing action is logged via `AuditService`:
 
-| Field      | Description                                 |
-|------------|---------------------------------------------|
-| actor_id   | User who performed the action               |
-| action     | e.g., "create_application", "agent_decision"|
-| resource   | Affected resource (application_id, etc.)    |
-| details    | JSON payload with full context              |
-| severity   | INFO, WARNING, ERROR, CRITICAL              |
-| timestamp  | ISO-8601 UTC timestamp                      |
-| ip_address | Request origin (for compliance)             |
+| Field       | Description                                     |
+|-------------|-------------------------------------------------|
+| timestamp   | When the action occurred                        |
+| actor       | Who performed the action                        |
+| eventType   | e.g., "Claims Officer Acceptance", "Fraud Screening" |
+| riskLevel   | INFO / WARNING / ERROR                          |
+| details     | Structured payload with full context            |
 
-### Hallucination Detection
+### Ethical Controls
 
-```python
-# services/llm_service.py
-HALLUCINATION_PHRASES = [
-    "I don't have information about",
-    "I cannot determine",
-    "Based on the policy provided",
-    "The policy does not specify",
-    # ... additional guardrail phrases
-]
-
-def check_hallucination(response: str) -> bool:
-    """Check if response contains guardrail phrases."""
-    # If policy grounding is absent but response makes
-    # a definitive claim → potential hallucination
-    # Logged to hallucination_log table for review
-```
+- **Never accuse** — flagged claims are described as "undergoing additional verification", never as fraud.
+- **Explain without exposing internals** — customer/officer explanations reference policy sections and reasons, not raw fraud scores or agent internals.
+- **HITL** — the escalation agent can only *recommend*; the final decision is always a human claim officer's.
+- **Rules from the policy document** — all thresholds are parsed from `insurance_policy.txt`, keeping behavior auditable and consistent.
 
 ---
 
@@ -281,105 +262,70 @@ def check_hallucination(response: str) -> bool:
 
 | Concept                | Implementation                                               |
 |------------------------|--------------------------------------------------------------|
-| **Supervised ML**      | Rule-based risk classification (Low / Medium / High)         |
-| **Feature Engineering**| Salary, loan amount, employment months as engineered signals |
+| **Supervised ML**      | Intent classification (joblib model + insurance keyword fallback) |
 | **Embeddings**         | SentenceTransformer (all-MiniLM-L6-v2) → 384-dim vectors     |
-| **Vector Search**      | FAISS IndexFlatL2 (L2 distance approximates cosine)          |
+| **Vector Search**      | FAISS IndexFlatL2 (L2 distance ≈ cosine similarity)          |
 | **RAG Pipeline**       | Chunk → Embed → Index → Retrieve → Augment → Generate        |
-| **Agent Workflow**     | 3 specialized agents coordinated by orchestrator             |
-| **HITL**               | Human decision required for high-risk / policy-violation     |
-| **Prompt Personas**    | 5 distinct personas (customer, risk, policy, compliance, doc)|
+| **Agent Workflow**     | 4 specialized agents coordinated by the orchestrator         |
+| **HITL**               | Human decision required for high fraud risk / uncertain coverage |
+| **Prompt Personas**    | Customer advisory, compliance, fraud explainer, policy checker, document validator |
+| **Similarity Search**  | Historical fraud case corpus scored per claim (0–1 similarity) |
 
 ### Embedding Details
 
 ```python
-# rag/pipeline.py
+# rag/embedder.py
 from sentence_transformers import SentenceTransformer
 
-model = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')
+model = SentenceTransformer('all-MiniLM-L6-v2')
 # Output: 384-dimensional dense vector
 # Model: 6-layer transformer, 22M parameters
-# Distance: IndexFlatL2 (L2 distance ~ cosine for unit vectors)
-# Performance: ~10K docs/sec on CPU
+# Distance: IndexFlatL2 (L2 distance ≈ cosine for unit vectors)
 ```
 
 ---
 
-## 7. Risk Classification
+## 7. Fraud Classification
 
 ```
-                    RISK LEVELS
+                    FRAUD LEVELS
                     ────────────
 
     LOW                    MEDIUM                    HIGH
 ┌──────────────┐    ┌──────────────┐    ┌──────────────┐
-│ All docs     │    │ Minor salary │    │ Missing      │
-│ submitted    │    │ / statement  │    │ mandatory    │
-│              │    │ mismatch     │    │ docs         │
-│ Income ≥     │    │              │    │              │
-│ ₹30,000      │    │ Employment   │    │ Income <     │
-│              │    │ 6-12 months  │    │ ₹30,000      │
-│ Loan ≤ 20x   │    │              │    │              │
-│ salary       │    │ Missing      │    │ Loan > 20x   │
-│              │    │ optional     │    │ salary       │
-│ Employment   │    │ info         │    │              │
-│ ≥ 12 months  │    │              │    │ Inconsistent │
-│              │    │              │    │ financial    │
-│              │    │              │    │ information  │
+│ Consistent   │    │ Claim amount │    │ 3+ indicators│
+│ details      │    │ exceeds      │    │ triggered    │
+│              │    │ coverage     │    │              │
+│ No pattern   │    │ limit        │    │ Semantic     │
+│ similarity   │    │              │    │ similarity   │
+│              │    │ Recent       │    │ ≥ 0.85       │
+│ Amount within│    │ inception    │    │              │
+│ coverage     │    │ (≤ 14 days)  │    │              │
+│              │    │ Missing docs │    │              │
+│              │    │              │    │              │
+│              │    │ Similarity   │    │              │
+│              │    │ 0.70–0.85    │    │              │
 ├──────────────┤    ├──────────────┤    ├──────────────┤
-│ Auto-        │    │ Request      │    │ Manual       │
-│ continue     │    │ additional   │    │ Review       │
-│              │    │ documents    │    │ Required     │
+│ Continue     │    │ Review /     │    │ Mandatory    │
+│ processing   │    │ request docs │    │ Manual       │
+│              │    │              │    │ Review       │
 └──────────────┘    └──────────────┘    └──────────────┘
 ```
+
+| Similarity | Classification | Action |
+|-----------|----------------|--------|
+| ≥ 0.85     | High           | Always escalated to human review |
+| ≥ 0.70     | Medium         | Review recommended |
+| < 0.70     | Low            | Continue normal processing |
 
 ---
 
 ## 8. Prompt Personas
 
-| Persona            | File                     | Tone              | Behavior                                  |
-|--------------------|--------------------------|-------------------|-------------------------------------------|
-| **Strict Compliance** | compliance_prompt.txt   | Formal, regulatory| Policy-only answers, never guesses        |
-| **Customer Advisory** | customer_prompt.txt     | Polite, simple    | Explains policies, never promises loan    |
-| **Risk Explainer**    | risk_prompt.txt         | Analytical        | Explains risk factors, doesn't change score|
-| **Policy Checker**    | policy_prompt.txt       | Precise, strict   | Checks compliance using only policy context|
-| **Document Validator**| document_prompt.txt     | Factual, concise  | Extracts only explicitly present info     |
-
----
-
-## 9. Ethical Controls
-
-```
-┌────────────────────────────────────────────────────────────────┐
-│                    ETHICAL & COMPLIANCE CONTROLS                │
-├────────────────────────────────────────────────────────────────┤
-│                                                                │
-│  ┌─────────────────────┐  ┌─────────────────────┐             │
-│  │     Bias Risk       │  │  Hallucination Risk │             │
-│  │  ───────────────    │  │  ─────────────────   │             │
-│  │  Rule-based checks  │  │  "I cannot           │             │
-│  │  with consistent    │  │  determine"          │             │
-│  │  thresholds         │  │  fallback            │             │
-│  │  LLM only explains, │  │  Policy-only         │             │
-│  │  never decides      │  │  guardrails          │             │
-│  └─────────────────────┘  └─────────────────────┘             │
-│                                                                │
-│  ┌─────────────────────┐  ┌─────────────────────┐             │
-│  │  Over-reliance on   │  │  Human Approval     │             │
-│  │  AI                 │  │  Checkpoints        │             │
-│  │  ───────────────    │  │  ────────────────   │             │
-│  │  HITL checkpoint    │  │  submit_human_      │             │
-│  │  for all high-risk  │  │  decision() method  │             │
-│  │  and manual-review  │  │  for manual review  │             │
-│  │  cases              │  │  workflow           │             │
-│  └─────────────────────┘  └─────────────────────┘             │
-│                                                                │
-│  ┌─────────────────────────────────────────────────────────┐  │
-│  │  Audit Trail                                             │  │
-│  │  ────────────                                            │  │
-│  │  Every decision logged via AuditService                  │  │
-│  │  with actor, action, timestamp, and severity             │  │
-│  └─────────────────────────────────────────────────────────┘  │
-│                                                                │
-└────────────────────────────────────────────────────────────────┘
-```
+| Persona              | Tone              | Behavior                                   |
+|----------------------|-------------------|--------------------------------------------|
+| **Customer Advisory** | Polite, simple    | Explains claims in plain language, never promises payouts |
+| **Strict Compliance** | Formal, regulatory | Policy-only answers, never guesses         |
+| **Fraud Explainer**   | Analytical        | Explains risk factors, never changes score |
+| **Policy Checker**    | Precise, strict   | Checks coverage using only policy context  |
+| **Document Validator**| Factual, concise  | Extracts only explicitly present info      |

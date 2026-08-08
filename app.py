@@ -1,9 +1,10 @@
 """
-Intelligent Loan Processing Assistant - Backend API
----------------------------------------------------
-Enterprise-grade AI solution for loan processing in Banking domain.
+Insurance Claims Intelligence Platform - Backend API
+-----------------------------------------------------
+AI-powered claims processing with fraud detection and
+human-in-the-loop review for the Insurance domain.
 """
-from fastapi import FastAPI, File, UploadFile, Form, HTTPException
+from fastapi import FastAPI, File, UploadFile, Form, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, HTMLResponse
 from pydantic import BaseModel
@@ -11,39 +12,41 @@ from typing import List, Optional
 import uuid, os, hashlib, secrets, shutil, logging
 from datetime import datetime
 
-from agents.orchestrator import LoanProcessingOrchestrator
-from models.application import LoanApplication
+from agents.orchestrator import ClaimsProcessingOrchestrator
+from models.claim import Claim
 from models.document import Document
-from models.extracted_data import ExtractedData
-from models.risk import RiskAssessment
+from models.extracted_data import ClaimExtractedData
+from models.fraud import FraudAssessment
 from utils.enums import (
-    ApplicationStatus, DocumentType, LoanType, RiskLevel, Recommendation,
-    ValidationStatus, ValidationError, AuditSeverity, AgentType, EligibilityStatus,
-    IntentType
+    ClaimStatus, ClaimType, DocumentType, FraudLevel, Recommendation,
+    ValidationStatus, ValidationError, AuditSeverity, AgentType, CoverageStatus,
+    IntentType, EscalationDecision
 )
 from ml.intent_classifier import IntentClassifier
 from services.audit_service import AuditService
 from services.policy_service import PolicyService
 from services.customer_service import CustomerService
 from services.llm_service import LLMService
+from services.fraud_case_service import FraudCaseService
 
 import database as db
 
 logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger("loan_assistant")
+logger = logging.getLogger("claims_assistant")
 
-app = FastAPI(title="Intelligent Loan Processing Assistant",
-              description="Enterprise-grade AI solution for loan processing in Banking domain",
+app = FastAPI(title="Insurance Claims Intelligence Platform",
+              description="AI-powered claims triage, fraud detection, and customer assistance for Insurance domain",
               version="1.0.0")
 
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=False,
                    allow_methods=["*"], allow_headers=["*"])
 
-orchestrator = LoanProcessingOrchestrator()
+orchestrator = ClaimsProcessingOrchestrator()
 audit_service = AuditService()
 policy_service = PolicyService()
 llm_service = LLMService()
 customer_service = CustomerService(policy=policy_service, llm=llm_service)
+fraud_case_service = FraudCaseService()
 
 try:
     intent_classifier = IntentClassifier()
@@ -57,71 +60,148 @@ def _token() -> str: return f"tok-{secrets.token_hex(16)}"
 
 # Seed admin user if not exists
 if not db.user_exists("admin"):
-    db.create_user("admin", "admin@lendsmart.com", "Admin Officer",
+    db.create_user("admin", "admin@claimsguard.com", "Admin Officer",
                    "+91 9876543210", _hash_pw("admin123"), "officer")
 
-LOANTYPE_REVERSE = {"HOME": "home", "VEHICLE": "auto", "PERSONAL": "personal",
-                    "BUSINESS": "business", "EDUCATION": "personal"}
-LOANTYPE_MAP = {v: k for k, v in LOANTYPE_REVERSE.items()}
+# Seed the synthetic historical fraud corpus into the DB for officer reference
+# (embeddings are not required for seeding, so this works without faiss)
+try:
+    if not db.list_fraud_cases():
+        seed_cases = []
+        for fc in fraud_case_service.load_cases():
+            seed_cases.append({
+                "id": fc.case_id,
+                "case_type": fc.case_type,
+                "fraud_level": fc.fraud_level.value,
+                "narrative": fc.narrative,
+                "fraud_indicators": "; ".join(fc.fraud_indicators),
+                "resolution": fc.resolution,
+            })
+        db.seed_fraud_cases(seed_cases)
+except Exception:
+    pass
 
-def _row_to_frontend(row: dict) -> dict:
+CLAIMTYPE_REVERSE = {"AUTO": "auto", "HEALTH": "health", "PROPERTY": "property",
+                     "FIRE": "fire", "THEFT": "theft", "LIABILITY": "liability",
+                     "TRAVEL": "travel"}
+CLAIMTYPE_MAP = {v: k for k, v in CLAIMTYPE_REVERSE.items()}
+
+
+def _customer_safe_reasoning(row, meta) -> str:
+    """Customer-facing status note. Fraud internals are never exposed."""
+    if meta.get("needs_human_review"):
+        return ("Your claim is undergoing additional verification by a claim officer. "
+                "This is a normal part of the review process and does not mean your claim is denied.")
+    status = row.get("status", "RECEIVED")
+    if status == "ACCEPTED":
+        return "Your claim has been accepted. Thank you for choosing ClaimsGuard."
+    if status == "REJECTED":
+        return "Your claim has been reviewed. Please contact us for details about this decision."
+    return "Your claim is being processed through our standard review workflow."
+
+
+def _row_to_frontend(row: dict, for_customer: bool = False) -> dict:
     import json
     meta = json.loads(row["metadata"]) if isinstance(row["metadata"], str) else (row["metadata"] or {})
-    ft = LOANTYPE_REVERSE.get(row.get("loan_type", "HOME").upper(), "home")
+    ft = CLAIMTYPE_REVERSE.get(row.get("claim_type", "AUTO").upper(), "auto")
     st_map = {
-        "PENDING": "pending_docs", "DOCUMENT_VERIFICATION": "pending_docs",
-        "POLICY_REVIEW": "under_review", "RISK_ASSESSMENT": "under_review",
-        "MANUAL_REVIEW": "under_review", "APPROVED": "approved", "REJECTED": "rejected"
+        "RECEIVED": "received", "INTAKE": "received",
+        "TRIAGE": "under_review", "POLICY_CHECK": "under_review",
+        "FRAUD_SCREEN": "under_review", "ESCALATION_REVIEW": "under_review",
+        "MANUAL_REVIEW": "under_review", "ACCEPTED": "accepted", "REJECTED": "rejected"
     }
-    st = st_map.get(row.get("status", "PENDING"), "pending_docs")
+    st = st_map.get(row.get("status", "RECEIVED"), "received")
     docs = meta.get("documents", [])
     if isinstance(docs, list):
         for d in docs:
             if isinstance(d, dict) and "id" not in d:
                 d["id"] = str(uuid.uuid4())
 
-    risk_assessment = meta.get("risk_assessment", {})
+    fraud_assessment = meta.get("fraud_assessment", {})
     policy_result = meta.get("policy_result", {})
+    escalation = meta.get("escalation_decision", {})
     extracted_data = meta.get("extracted_data", {})
 
-    risk_score_map = {"Low": 20, "Medium": 50, "High": 80, "Unknown": 30}
-    risk_level = risk_assessment.get("risk_level", "Unknown")
-    risk_score = risk_assessment.get("risk_score", risk_score_map.get(risk_level, 30))
+    fraud_score_map = {"Low": 15, "Medium": 50, "High": 80, "Unknown": 30}
+    fraud_level = fraud_assessment.get("fraud_level", "Unknown")
+    fraud_score = fraud_assessment.get("fraud_score", fraud_score_map.get(fraud_level, 30))
 
     progress_map = {
-        "PENDING": 10, "DOCUMENT_VERIFICATION": 25, "POLICY_REVIEW": 40,
-        "RISK_ASSESSMENT": 70, "MANUAL_REVIEW": 85, "APPROVED": 100, "REJECTED": 100
+        "RECEIVED": 10, "INTAKE": 25, "TRIAGE": 40, "POLICY_CHECK": 55,
+        "FRAUD_SCREEN": 70, "ESCALATION_REVIEW": 85, "MANUAL_REVIEW": 85,
+        "ACCEPTED": 100, "REJECTED": 100
     }
-    progress = progress_map.get(row.get("status", "PENDING"), 10)
+    progress = progress_map.get(row.get("status", "RECEIVED"), 10)
 
-    compliance_eligibility = policy_result.get("eligibility_status", "")
-    compliance_status = "compliant"
-    if compliance_eligibility == "Not Eligible":
-        compliance_status = "failed"
-    elif compliance_eligibility == "Manual Review":
-        compliance_status = "review_required"
+    coverage_status = policy_result.get("coverage_status", "")
+    coverage_state = "covered"
+    if coverage_status == "Not Covered":
+        coverage_state = "failed"
+    elif coverage_status == "Excluded":
+        coverage_state = "failed"
+    elif coverage_status in ("Manual Review", "Partially Covered"):
+        coverage_state = "review_required"
 
-    reasoning_notes = risk_assessment.get("llm_explanation", "") or policy_result.get("explanation", "") or ""
+    reasoning_notes = (fraud_assessment.get("llm_explanation", "")
+                       or policy_result.get("explanation", "")
+                       or escalation.get("rationale", "") or "")
+
+    similar_cases = fraud_assessment.get("similar_cases", []) if isinstance(fraud_assessment, dict) else []
+    similarity_score = fraud_assessment.get("similarity_score")
+
+    agent_consensus = {
+        "documentValidation": {"status": "pass", "score": 90, "details": "Claim documents validated."},
+        "policyInterpretation": {
+            "status": "pass" if coverage_state == "covered" else ("warn" if coverage_state == "review_required" else "fail"),
+            "score": policy_result.get("confidence_score", 0.9) * 100 if isinstance(policy_result, dict) else 90,
+            "details": policy_result.get("explanation", "Coverage interpretation complete.")
+        },
+        "fraudScreening": {
+            "status": "pass" if fraud_level in ("Low", "Unknown") else ("warn" if fraud_level == "Medium" else "fail"),
+            "score": fraud_score,
+            "details": fraud_assessment.get("llm_explanation", "Fraud screening complete.")
+        },
+        "escalationDecision": {
+            "status": "pass" if not escalation.get("requires_human_review") else "warn",
+            "score": escalation.get("confidence_score", 1.0) * 100 if isinstance(escalation, dict) else 100,
+            "details": escalation.get("rationale", "No escalation triggered.")
+        }
+    }
+
+    if for_customer:
+        fraud_score = None
+        fraud_level = ""
+        similarity_score = None
+        similar_cases = []
+        reasoning_notes = _customer_safe_reasoning(row, meta)
+        agent_consensus["fraudScreening"] = {
+            "status": "pass", "score": 0,
+            "details": "Fraud screening is handled confidentially by the claims team."
+        }
 
     return {
         "id": row["id"],
-        "applicantName": row.get("customer_name", row.get("applicant_name", "")),
-        "applicantEmail": row.get("applicant_email", ""),
-        "applicantPhone": row.get("customer_phone", row.get("applicant_phone", "")),
+        "claimantName": row.get("claimant_name", ""),
+        "claimantEmail": row.get("claimant_email", ""),
+        "claimantPhone": row.get("claimant_phone", ""),
+        "policyNumber": row.get("policy_number", meta.get("policy_number", "")),
         "type": ft, "status": st,
-        "amount": row.get("loan_amount", 0),
-        "termMonths": row.get("term_months", meta.get("term_months", 12)),
+        "amount": row.get("claim_amount", 0),
+        "incidentDate": row.get("incident_date", ""),
         "progress": progress,
         "submittedDate": row.get("submitted_date", ""),
-        "interestRate": row.get("interest_rate", meta.get("interest_rate", 5.0)),
-        "riskScore": risk_score,
-        "defaultRate": meta.get("default_rate", 1.8),
-        "complianceStatus": compliance_status,
+        "fraudScore": fraud_score,
+        "fraudLevel": fraud_level,
+        "coverageStatus": coverage_state,
         "documents": docs if isinstance(docs, list) else [],
         "reasoningNotes": reasoning_notes,
-        "agentConsensus": meta.get("agent_consensus"),
-        "similarityHeatmap": meta.get("similarity_heatmap"),
+        "agentConsensus": agent_consensus,
+        "similarityScore": similarity_score,
+        "similarCases": similar_cases,
+        "needsHumanReview": meta.get("needs_human_review", False),
+        "humanReviewReason": meta.get("human_review_reason", ""),
     }
+
 
 def _audit_entry(actor, event, details, risk="low"):
     log_id = f"LOG-{uuid.uuid4().hex[:8]}"
@@ -142,13 +222,17 @@ class RegisterRequest(BaseModel):
 class ProfileUpdateRequest(BaseModel):
     name: str; email: str; phone: str; username: Optional[str] = ""
 
-class CreateAppRequest(BaseModel):
-    applicantName: str; applicantEmail: str; applicantPhone: Optional[str] = ""
-    type: str = "home"; amount: float = 100000; termMonths: int = 12
-    interestRate: float = 5.0; documents: List[dict] = []
+class CreateClaimRequest(BaseModel):
+    claimantName: str; claimantEmail: str; claimantPhone: Optional[str] = ""
+    policyNumber: str = ""; type: str = "auto"; amount: float = 100000
+    incidentDate: Optional[str] = ""; lossDescription: str = ""
+    documents: List[dict] = []
 
-class ApproveRejectRequest(BaseModel):
+class AcceptRejectRequest(BaseModel):
     actor: str; reason: str = ""
+
+class OverrideRequest(BaseModel):
+    actor: str; decision: str = ""; reason: str = ""
 
 class DocOverrideRequest(BaseModel):
     status: str
@@ -158,7 +242,7 @@ class CreatePolicyDocRequest(BaseModel):
 
 class ChatRequest(BaseModel):
     message: str; history: List[dict] = []
-    applicationsContext: List[dict] = []
+    claimsContext: List[dict] = []
 
 # ══════════════════════════════════════════════════
 # ROOT
@@ -170,7 +254,7 @@ async def root():
     if os.path.exists(idx):
         with open(idx, "r", encoding="utf-8") as f:
             return HTMLResponse(f.read())
-    return {"service": "Intelligent Loan Processing Assistant", "version": "1.0.0"}
+    return {"service": "Insurance Claims Intelligence Platform", "version": "1.0.0"}
 
 # ══════════════════════════════════════════════════
 # AUTH
@@ -223,48 +307,50 @@ async def remove_user(username: str):
     return {"success": True}
 
 # ══════════════════════════════════════════════════
-# APPLICATIONS
+# CLAIMS
 # ══════════════════════════════════════════════════
 
-REQUIRED_DOC_TYPES = ["salary_slip", "bank_statement", "employment_letter"]
-DOC_TYPE_NAMES = {"salary_slip": "Salary Slip", "bank_statement": "Bank Statement",
-                  "employment_letter": "Employment Letter"}
+REQUIRED_DOC_TYPES = ["claim_form", "policy_document", "proof_of_loss"]
+DOC_TYPE_NAMES = {"claim_form": "Claim Form", "policy_document": "Policy Document",
+                  "proof_of_loss": "Proof of Loss", "medical_report": "Medical Report",
+                  "police_report": "Police Report", "invoice_receipt": "Invoice / Receipt",
+                  "incident_report": "Incident Report"}
 
-@app.get("/api/applications")
-async def list_applications(email: str = "", status: str = "", search: str = ""):
-    rows = db.list_applications(email=email, status=status, search=search)
+@app.get("/api/claims")
+async def list_claims(request: Request, email: str = "", status: str = "", search: str = ""):
+    rows = db.list_claims(email=email, status=status, search=search)
+    is_customer = request.headers.get("x-portal-role", "").lower() == "customer"
     result = []
     for row in rows:
-        app_dict = _row_to_frontend(row)
-        if search and search.lower() not in app_dict.get("applicantName", "").lower() and search.lower() not in app_dict.get("id", "").lower():
+        app_dict = _row_to_frontend(row, for_customer=is_customer)
+        if search and search.lower() not in app_dict.get("claimantName", "").lower() and search.lower() not in app_dict.get("id", "").lower():
             continue
         result.append(app_dict)
-    return {"applications": result}
+    return {"claims": result}
 
-@app.get("/api/applications/{application_id}")
-async def get_application(application_id: str):
-    row = db.get_application(application_id)
+@app.get("/api/claims/{claim_id}")
+async def get_claim(request: Request, claim_id: str):
+    row = db.get_claim(claim_id)
     if not row:
-        raise HTTPException(404, "Application not found")
-    return _row_to_frontend(row)
+        raise HTTPException(404, "Claim not found")
+    is_customer = request.headers.get("x-portal-role", "").lower() == "customer"
+    return _row_to_frontend(row, for_customer=is_customer)
 
-@app.post("/api/applications")
-async def create_application(req: CreateAppRequest):
+@app.post("/api/claims")
+async def create_claim(req: CreateClaimRequest):
     try:
-        lt = LoanType[LOANTYPE_MAP.get(req.type, "HOME")]
+        ct = ClaimType[CLAIMTYPE_MAP.get(req.type, "AUTO")]
     except KeyError:
-        lt = LoanType.HOME
+        ct = ClaimType.AUTO
 
-    app_id = f"LEND-{uuid.uuid4().hex[:8].upper()}"
+    claim_id = f"CLM-{uuid.uuid4().hex[:8].upper()}"
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     sub_date = datetime.now().strftime("%Y-%m-%d")
-    interest_rate = req.interestRate or 8.5
 
     metadata = {
-        "interest_rate": interest_rate,
-        "default_rate": 1.8,
-        "term_months": req.termMonths or 24,
+        "policy_number": req.policyNumber,
         "submitted_date": sub_date,
+        "loss_description": req.lossDescription,
         "documents": [],
     }
 
@@ -282,22 +368,22 @@ async def create_application(req: CreateAppRequest):
     import json
     meta_json = json.dumps(metadata)
 
-    db.save_application(app_id, req.applicantName, req.applicantEmail or "",
-                        req.applicantPhone or "", req.type or "HOME",
-                        req.amount, req.termMonths or 24, interest_rate,
-                        "PENDING", meta_json)
-    db.create_audit_log(f"LOG-{uuid.uuid4().hex[:8]}", req.applicantEmail or "Customer",
-                        "Application Created",
-                        f"New {req.type} loan application created. Amount: ₹{req.amount:,.0f}")
+    db.save_claim(claim_id, req.claimantName, req.claimantEmail or "",
+                  req.claimantPhone or "", req.policyNumber or "",
+                  req.type or "AUTO", req.amount, req.incidentDate or "",
+                  "RECEIVED", meta_json)
+    db.create_audit_log(f"LOG-{uuid.uuid4().hex[:8]}", req.claimantEmail or "Customer",
+                        "Claim Created",
+                        f"New {req.type} claim created. Amount: ₹{req.amount:,.0f}")
 
-    row = db.get_application(app_id)
-    return {"application": _row_to_frontend(row)}
+    row = db.get_claim(claim_id)
+    return {"claim": _row_to_frontend(row)}
 
-@app.post("/api/applications/{application_id}/documents")
-async def upload_application_documents(application_id: str, files: List[UploadFile] = File(...)):
-    row = db.get_application(application_id)
+@app.post("/api/claims/{claim_id}/documents")
+async def upload_claim_documents(claim_id: str, files: List[UploadFile] = File(...)):
+    row = db.get_claim(claim_id)
     if not row:
-        raise HTTPException(404, "Application not found")
+        raise HTTPException(404, "Claim not found")
 
     import json
     meta = json.loads(row["metadata"]) if isinstance(row["metadata"], str) else (row["metadata"] or {})
@@ -305,18 +391,26 @@ async def upload_application_documents(application_id: str, files: List[UploadFi
     if not isinstance(docs, list):
         docs = []
 
-    upload_dir = f"data/uploads/{application_id}"
+    upload_dir = f"data/uploads/{claim_id}"
     os.makedirs(upload_dir, exist_ok=True)
 
     for file in files:
         fname = file.filename.lower()
         doc_type = None
-        if "salary" in fname or "pay" in fname or "slip" in fname:
-            doc_type = "salary_slip"
-        elif "bank" in fname or "statement" in fname:
-            doc_type = "bank_statement"
-        elif "employ" in fname or "offer" in fname or "letter" in fname:
-            doc_type = "employment_letter"
+        if "claim" in fname and "form" in fname:
+            doc_type = "claim_form"
+        elif "policy" in fname:
+            doc_type = "policy_document"
+        elif "loss" in fname or "proof" in fname:
+            doc_type = "proof_of_loss"
+        elif "medical" in fname or "report" in fname:
+            doc_type = "medical_report"
+        elif "police" in fname or "fir" in fname:
+            doc_type = "police_report"
+        elif "invoice" in fname or "receipt" in fname or "bill" in fname:
+            doc_type = "invoice_receipt"
+        elif "incident" in fname:
+            doc_type = "incident_report"
         else:
             doc_type = "other"
 
@@ -344,68 +438,118 @@ async def upload_application_documents(application_id: str, files: List[UploadFi
     uploaded_types = {d["docType"] for d in docs if isinstance(d, dict)}
     meta["documents"] = docs
 
+    new_status = row.get("status", "RECEIVED")
+
     if all(t in uploaded_types for t in REQUIRED_DOC_TYPES):
         try:
-            LOANTYPE_FROM_DB = {
-                "HOME": LoanType.HOME, "PERSONAL": LoanType.PERSONAL,
-                "VEHICLE": LoanType.VEHICLE, "EDUCATION": LoanType.EDUCATION,
-                "BUSINESS": LoanType.BUSINESS
-            }
-            loan_type_enum = LOANTYPE_FROM_DB.get(row.get("loan_type", "HOME").upper(), LoanType.HOME)
-            app_obj = LoanApplication(
-                application_id=row["id"],
-                customer_name=row.get("customer_name", ""),
-                customer_age=0,
-                customer_phone=row.get("customer_phone", ""),
-                loan_type=loan_type_enum,
-                loan_amount=row.get("loan_amount", 0),
-                monthly_salary=0,
-                employment_type="Unknown",
-                application_status=ApplicationStatus.PENDING
+            CLAIMTYPE_FROM_DB = {v: k for k, v in CLAIMTYPE_REVERSE.items()}
+            claim_type_enum = CLAIMTYPE_FROM_DB.get(row.get("claim_type", "AUTO").upper(), ClaimType.AUTO)
+            claim_obj = Claim(
+                claim_id=row["id"],
+                claimant_name=row.get("claimant_name", ""),
+                claimant_email=row.get("claimant_email", ""),
+                claimant_phone=row.get("claimant_phone", ""),
+                policy_number=row.get("policy_number", ""),
+                claim_type=claim_type_enum,
+                claim_amount=row.get("claim_amount", 0),
+                incident_date=row.get("incident_date", ""),
+                loss_description=meta.get("loss_description", ""),
+                claim_status=ClaimStatus.RECEIVED
             )
 
             file_paths = [os.path.join(upload_dir, d["name"]) for d in docs if d.get("name")]
             document_types = [d["docType"] for d in docs if d.get("docType")]
 
-            result = orchestrator.process_application(
-                application=app_obj,
+            result = orchestrator.process_claim(
+                claim=claim_obj,
                 file_paths=file_paths,
                 document_types=document_types
             )
 
             serialized = orchestrator.serialize_result(result)
 
-            meta["risk_assessment"] = serialized["risk_assessment"]
+            meta["fraud_assessment"] = serialized["fraud_assessment"]
             meta["policy_result"] = serialized["policy_result"]
+            meta["escalation_decision"] = serialized["escalation_decision"]
             meta["extracted_data"] = serialized["extracted_data"]
             meta["missing_documents"] = serialized["missing_documents"]
             meta["needs_human_review"] = serialized["needs_human_review"]
             meta["human_review_reason"] = serialized["human_review_reason"]
 
-            new_status = serialized.get("application_status", "POLICY_REVIEW")
-            if new_status in ("APPROVED", "REJECTED"):
-                new_status = "POLICY_REVIEW"
+            new_status = serialized.get("claim_status", "INTAKE")
+            if new_status in ("ACCEPTED", "REJECTED"):
+                new_status = "INTAKE"
         except Exception as e:
             logger.warning(f"Orchestrator processing failed: {e}")
-            new_status = "POLICY_REVIEW"
+            new_status = "INTAKE"
             meta["needs_human_review"] = True
             meta["human_review_reason"] = f"AI pipeline processing failed: {str(e)}"
     else:
         missing = [t for t in REQUIRED_DOC_TYPES if t not in uploaded_types]
         meta["reasoning_notes"] = f"Still missing: {', '.join(DOC_TYPE_NAMES.get(t, t) for t in missing)}"
-        new_status = row.get("status", "PENDING")
 
-    db.update_application(application_id, new_status, json.dumps(meta))
+    db.update_claim(claim_id, new_status, json.dumps(meta))
     db.create_audit_log(f"LOG-{uuid.uuid4().hex[:8]}", "Customer", "Document Upload",
-                        f"Documents uploaded for {application_id}")
+                        f"Documents uploaded for {claim_id}")
 
-    row = db.get_application(application_id)
-    return {"application": _row_to_frontend(row)}
+    row = db.get_claim(claim_id)
+    return {"claim": _row_to_frontend(row)}
 
-@app.get("/api/applications/{application_id}/documents/{doc_name}/file")
-async def get_document_file(application_id: str, doc_name: str):
-    """Serve uploaded document files for officer review (inline preview)."""
-    file_path = os.path.join("data", "uploads", application_id, doc_name)
+@app.post("/api/claims/{claim_id}/process")
+async def process_claim(claim_id: str):
+    """Run the full agent pipeline on an existing claim."""
+    row = db.get_claim(claim_id)
+    if not row:
+        raise HTTPException(404, "Claim not found")
+
+    import json
+    meta = json.loads(row["metadata"]) if isinstance(row["metadata"], str) else (row["metadata"] or {})
+    docs = meta.get("documents", [])
+    if not isinstance(docs, list) or not docs:
+        raise HTTPException(400, "No documents uploaded for this claim")
+
+    try:
+        CLAIMTYPE_FROM_DB = {v: k for k, v in CLAIMTYPE_REVERSE.items()}
+        claim_type_enum = CLAIMTYPE_FROM_DB.get(row.get("claim_type", "AUTO").upper(), ClaimType.AUTO)
+        claim_obj = Claim(
+            claim_id=row["id"],
+            claimant_name=row.get("claimant_name", ""),
+            claimant_email=row.get("claimant_email", ""),
+            claimant_phone=row.get("claimant_phone", ""),
+            policy_number=row.get("policy_number", ""),
+            claim_type=claim_type_enum,
+            claim_amount=row.get("claim_amount", 0),
+            incident_date=row.get("incident_date", ""),
+            loss_description=meta.get("loss_description", ""),
+            claim_status=ClaimStatus.RECEIVED
+        )
+
+        upload_dir = f"data/uploads/{claim_id}"
+        file_paths = [os.path.join(upload_dir, d["name"]) for d in docs if d.get("name")]
+        document_types = [d["docType"] for d in docs if d.get("docType")]
+
+        result = orchestrator.process_claim(claim_obj, file_paths, document_types)
+        serialized = orchestrator.serialize_result(result)
+
+        meta["fraud_assessment"] = serialized["fraud_assessment"]
+        meta["policy_result"] = serialized["policy_result"]
+        meta["escalation_decision"] = serialized["escalation_decision"]
+        meta["extracted_data"] = serialized["extracted_data"]
+        meta["missing_documents"] = serialized["missing_documents"]
+        meta["needs_human_review"] = serialized["needs_human_review"]
+        meta["human_review_reason"] = serialized["human_review_reason"]
+
+        new_status = serialized.get("claim_status", "INTAKE")
+        db.update_claim(claim_id, new_status, json.dumps(meta))
+        row = db.get_claim(claim_id)
+        return _row_to_frontend(row)
+    except Exception as e:
+        raise HTTPException(500, detail=str(e))
+
+@app.get("/api/claims/{claim_id}/documents/{doc_name}/file")
+async def get_claim_document_file(claim_id: str, doc_name: str):
+    """Serve uploaded claim documents for officer review (inline preview)."""
+    file_path = os.path.join("data", "uploads", claim_id, doc_name)
     if not os.path.exists(file_path):
         raise HTTPException(404, "File not found")
     ext = os.path.splitext(doc_name)[1].lower()
@@ -417,42 +561,128 @@ async def get_document_file(application_id: str, doc_name: str):
     return Response(content=content, media_type=media_type,
                     headers={"Content-Disposition": f"inline; filename=\"{doc_name}\""})
 
-@app.patch("/api/applications/{application_id}/approve")
-async def approve_application(application_id: str, req: ApproveRejectRequest):
-    row = db.get_application(application_id)
+@app.get("/api/claims/{claim_id}/fraud-analysis")
+async def get_fraud_analysis(claim_id: str):
+    row = db.get_claim(claim_id)
     if not row:
-        raise HTTPException(404, "Application not found")
+        raise HTTPException(404, "Claim not found")
+    import json
+    meta = json.loads(row["metadata"]) if isinstance(row["metadata"], str) else (row["metadata"] or {})
+    fa = meta.get("fraud_assessment", {})
+    return {
+        "claim_id": claim_id,
+        "fraud_level": fa.get("fraud_level", "Unknown"),
+        "fraud_score": fa.get("fraud_score", 0),
+        "confidence_score": fa.get("confidence_score", 0),
+        "similarity_score": fa.get("similarity_score"),
+        "similar_cases": fa.get("similar_cases", []),
+        "reasons": fa.get("reasons", ["Fraud screening not yet available"]),
+        "fraud_indicators": fa.get("fraud_indicators", []),
+        "triggered_rules": fa.get("triggered_rules", []),
+        "llm_explanation": fa.get("llm_explanation", ""),
+    }
+
+@app.get("/api/claims/{claim_id}/explanation")
+async def get_claim_explanation(claim_id: str):
+    """Customer-safe plain language explanation of the claim decision."""
+    row = db.get_claim(claim_id)
+    if not row:
+        raise HTTPException(404, "Claim not found")
+    import json
+    meta = json.loads(row["metadata"]) if isinstance(row["metadata"], str) else (row["metadata"] or {})
+    status = row.get("status", "RECEIVED")
+    decision = "under review"
+    if status == "ACCEPTED":
+        decision = "accepted"
+    elif status == "REJECTED":
+        decision = "under review" if meta.get("needs_human_review") else "rejected"
+
+    reasons = meta.get("human_review_reason", "") or meta.get("reasoning_notes", "")
+    if not reasons:
+        reasons = "Your claim is being processed through our standard review workflow."
+    if meta.get("needs_human_review"):
+        reasons = "Your claim is undergoing additional verification by a claim officer. This is a normal part of the review process and does not mean your claim is denied."
+
+    claim_information = f"Claim {claim_id} ({row.get('claim_type', '')})"
+    explanation = customer_service.explain_claim(decision, claim_information, reasons)
+    return {
+        "claim_id": claim_id,
+        "decision": decision,
+        "explanation": explanation,
+        "disclaimer": "This explanation is informational only and does not constitute a final legal determination. The final decision is made by a claim officer.",
+    }
+
+@app.patch("/api/claims/{claim_id}/accept")
+async def accept_claim(claim_id: str, req: AcceptRejectRequest):
+    row = db.get_claim(claim_id)
+    if not row:
+        raise HTTPException(404, "Claim not found")
     import json
     meta = json.loads(row["metadata"]) if isinstance(row["metadata"], str) else (row["metadata"] or {})
     meta["progress"] = 100
-    db.update_application(application_id, "APPROVED", json.dumps(meta))
+    meta["decision_reason"] = req.reason
+    db.update_claim(claim_id, "ACCEPTED", json.dumps(meta))
     log_id = f"LOG-{uuid.uuid4().hex[:8]}"
-    db.create_audit_log(log_id, req.actor or "Officer", "Underwriter Approval",
-                        f"Application {application_id} approved.", "low")
-    row = db.get_application(application_id)
-    return {"application": _row_to_frontend(row), "auditLog": db.get_audit_log(log_id)}
+    db.create_audit_log(log_id, req.actor or "Officer", "Claims Officer Acceptance",
+                        f"Claim {claim_id} accepted. Reason: {req.reason}", "low")
+    row = db.get_claim(claim_id)
+    return {"claim": _row_to_frontend(row), "auditLog": db.get_audit_log(log_id)}
 
-@app.patch("/api/applications/{application_id}/reject")
-async def reject_application(application_id: str, req: ApproveRejectRequest):
-    row = db.get_application(application_id)
+@app.patch("/api/claims/{claim_id}/reject")
+async def reject_claim(claim_id: str, req: AcceptRejectRequest):
+    row = db.get_claim(claim_id)
     if not row:
-        raise HTTPException(404, "Application not found")
+        raise HTTPException(404, "Claim not found")
     import json
     meta = json.loads(row["metadata"]) if isinstance(row["metadata"], str) else (row["metadata"] or {})
     meta["progress"] = 100
     meta["rejection_reason"] = req.reason
-    db.update_application(application_id, "REJECTED", json.dumps(meta))
+    db.update_claim(claim_id, "REJECTED", json.dumps(meta))
     log_id = f"LOG-{uuid.uuid4().hex[:8]}"
-    db.create_audit_log(log_id, req.actor or "Officer", "Underwriter Rejection",
-                        f"Application {application_id} rejected. Reason: {req.reason}", "high")
-    row = db.get_application(application_id)
-    return {"application": _row_to_frontend(row), "auditLog": db.get_audit_log(log_id)}
+    db.create_audit_log(log_id, req.actor or "Officer", "Claims Officer Rejection",
+                        f"Claim {claim_id} rejected. Reason: {req.reason}", "high")
+    row = db.get_claim(claim_id)
+    return {"claim": _row_to_frontend(row), "auditLog": db.get_audit_log(log_id)}
 
-@app.patch("/api/applications/{application_id}/documents/{doc_id}")
-async def update_document_status(application_id: str, doc_id: str, req: DocOverrideRequest):
-    row = db.get_application(application_id)
+@app.patch("/api/claims/{claim_id}/override")
+async def override_escalation(claim_id: str, req: OverrideRequest):
+    """
+    Human-in-the-loop override. A claim officer can override the AI
+    escalation decision. The override is always recorded in the audit trail.
+    """
+    row = db.get_claim(claim_id)
     if not row:
-        raise HTTPException(404, "Application not found")
+        raise HTTPException(404, "Claim not found")
+    import json
+    meta = json.loads(row["metadata"]) if isinstance(row["metadata"], str) else (row["metadata"] or {})
+    meta["override"] = {
+        "actor": req.actor,
+        "decision": req.decision,
+        "reason": req.reason,
+        "timestamp": datetime.now().isoformat(),
+    }
+    meta["needs_human_review"] = False
+    new_status = "MANUAL_REVIEW"
+    if req.decision and req.decision.upper() in ("ACCEPT", "APPROVE"):
+        new_status = "ACCEPTED"
+        meta["progress"] = 100
+    elif req.decision and req.decision.upper() in ("REJECT", "DENY"):
+        new_status = "REJECTED"
+        meta["progress"] = 100
+    else:
+        new_status = "INTAKE"
+    db.update_claim(claim_id, new_status, json.dumps(meta))
+    log_id = f"LOG-{uuid.uuid4().hex[:8]}"
+    db.create_audit_log(log_id, req.actor or "Officer", "Escalation Override",
+                        f"Officer override on {claim_id}: {req.decision or 'continued'} - {req.reason}", "medium")
+    row = db.get_claim(claim_id)
+    return {"claim": _row_to_frontend(row), "auditLog": db.get_audit_log(log_id)}
+
+@app.patch("/api/claims/{claim_id}/documents/{doc_id}")
+async def update_claim_document_status(claim_id: str, doc_id: str, req: DocOverrideRequest):
+    row = db.get_claim(claim_id)
+    if not row:
+        raise HTTPException(404, "Claim not found")
     import json
     meta = json.loads(row["metadata"]) if isinstance(row["metadata"], str) else (row["metadata"] or {})
     docs = meta.get("documents", [])
@@ -462,19 +692,31 @@ async def update_document_status(application_id: str, doc_id: str, req: DocOverr
                 d["status"] = req.status
                 break
     meta["documents"] = docs
-    db.update_application(application_id, row["status"], json.dumps(meta))
-    row = db.get_application(application_id)
+    db.update_claim(claim_id, row["status"], json.dumps(meta))
+    row = db.get_claim(claim_id)
     return _row_to_frontend(row)
+
+# ══════════════════════════════════════════════════
+# FRAUD CASES (synthetic historical corpus)
+# ══════════════════════════════════════════════════
+
+@app.get("/api/fraud-cases")
+async def list_fraud_cases():
+    return {"fraudCases": db.list_fraud_cases()}
+
+@app.get("/api/fraud-cases/thresholds")
+async def fraud_thresholds():
+    return fraud_case_service.get_thresholds()
 
 # ══════════════════════════════════════════════════
 # AUDIT LOGS
 # ══════════════════════════════════════════════════
 
 @app.get("/api/audit-logs")
-async def list_audit_logs(application_id: str = "", riskLevel: str = ""):
+async def list_audit_logs(claim_id: str = "", riskLevel: str = ""):
     logs = db.list_audit_logs()
-    if application_id:
-        logs = [l for l in logs if isinstance(l, dict) and application_id in l.get("details", "")]
+    if claim_id:
+        logs = [l for l in logs if isinstance(l, dict) and claim_id in l.get("details", "")]
     if riskLevel:
         logs = [l for l in logs if isinstance(l, dict) and l.get("riskLevel") == riskLevel]
     return {"logs": logs}
@@ -483,18 +725,15 @@ async def list_audit_logs(application_id: str = "", riskLevel: str = ""):
 # POLICY DOCUMENTS
 # ══════════════════════════════════════════════════
 
-DOC_TYPES_TO_NAME = {"salary_slip": "Salary Slip", "bank_statement": "Bank Statement", "employment_letter": "Employment Letter"}
-
 @app.get("/api/policy-documents")
 async def list_policy_documents():
     docs = db.list_policy_docs()
     if not docs:
-        # Seed default policy docs
         defaults = [
-            {"name": "Mortgage Underwriting Guidelines", "version": "v4.2", "status": "active"},
-            {"name": "Commercial Loan Credit Risk Limits", "version": "v3.0", "status": "active"},
-            {"name": "Retail & Consumer Lending Eligibility", "version": "v2.5", "status": "active"},
-            {"name": "Automated Identity & Fraud Detection", "version": "v1.9", "status": "archived"},
+            {"name": "Motor Insurance Claim Guidelines", "version": "v4.2", "status": "active"},
+            {"name": "Health Insurance Coverage Rules", "version": "v3.0", "status": "active"},
+            {"name": "Property & Fire Claim Policy", "version": "v2.5", "status": "active"},
+            {"name": "Fraud Detection Framework", "version": "v1.9", "status": "archived"},
         ]
         for d in defaults:
             db.create_policy_doc(d["name"], d["version"], d["status"])
@@ -503,8 +742,7 @@ async def list_policy_documents():
 
 @app.post("/api/policy-documents")
 async def create_policy_document(req: CreatePolicyDocRequest):
-    doc_id = f"pol-{uuid.uuid4().hex[:4]}"
-    db.create_policy_doc(req.name, req.version, "active")
+    db.create_policy_doc(f"pol-{uuid.uuid4().hex[:4]}", req.name, req.version, "active")
     db.create_audit_log(f"LOG-{uuid.uuid4().hex[:8]}", "Officer", "Policy Document Upload",
                         f"Policy document '{req.name}' v{req.version} uploaded.")
     docs = db.list_policy_docs()
@@ -538,27 +776,19 @@ async def update_profile(req: ProfileUpdateRequest):
 # ══════════════════════════════════════════════════
 
 FAQ_DATA = [
-    {"question": "What documents do I need to apply for a loan?", "answer": "You need three mandatory documents: (1) Salary Slip - last 3 months, (2) Bank Statement - last 6 months, (3) Employment Letter. Additional documents may be requested based on loan type."},
-    {"question": "How does the AI process my application?", "answer": "Our system uses three AI agents: Document Validation Agent checks your uploaded documents, Policy Compliance Agent verifies against lending policies, and Risk Evaluation Agent assesses your risk profile. Each agent provides a score and recommendation."},
-    {"question": "What do the risk levels mean?", "answer": "Low Risk: All documents verified, income stable, loan within limits. Medium Risk: Minor mismatches or missing optional info. High Risk: Missing mandatory documents, income below minimum, or false information."},
-    {"question": "How long does loan processing take?", "answer": "Document validation completes in minutes. Policy review and risk assessment take 1-2 business days. Final officer decision follows within 24 hours of review completion."},
+    {"question": "What documents do I need to file a claim?", "answer": "You need three mandatory documents: (1) Signed Claim Form, (2) Policy Document, (3) Proof of Loss statement. Additional documents depend on the claim type — medical reports for health, police reports for theft or accidents, and invoices for property damage."},
+    {"question": "How does the AI process my claim?", "answer": "Our system uses four AI agents: Document Validation Agent checks your submitted documents, Policy Interpretation Agent checks whether the claim is covered, Fraud Detection Agent screens against historical patterns, and Escalation Decision Agent decides whether a claim officer needs to review. Each agent provides a score and recommendation."},
+    {"question": "What do the fraud risk levels mean?", "answer": "Low Risk: Claim details consistent, amount within limits, no pattern similarity. Medium Risk: Minor inconsistencies or claim filed shortly after policy purchase. High Risk: Multiple inconsistencies or strong similarity to historical fraud patterns — this always requires a claim officer's review."},
+    {"question": "How long does claim processing take?", "answer": "Document validation completes in minutes. Coverage review and fraud screening take 1-2 business days. Final claim officer decision follows within 24 hours of review completion."},
     {"question": "Is my data secure?", "answer": "All documents are encrypted at rest and in transit. Access is role-based and all actions are logged in an immutable audit trail."},
-    {"question": "Why was my application rejected?", "answer": "Common reasons: income below minimum threshold (₹30,000/month), loan amount exceeds 20x monthly salary, missing documents, or policy violations. Check with your loan officer for specific details."}
+    {"question": "Why was my claim rejected?", "answer": "Common reasons: the event is excluded by the policy, the claim was filed after the reporting window, documents are missing, or the claim amount exceeds coverage. A claim officer can share the specific reasons for your claim."}
 ]
 
 @app.get("/api/faq")
 async def get_faq(search: str = ""):
     faqs = db.list_faqs()
     if not faqs:
-        # Seed defaults
-        defaults = [
-            ("What documents do I need to apply for a loan?", "You need three mandatory documents: (1) Salary Slip - last 3 months, (2) Bank Statement - last 6 months, (3) Employment Letter. Additional documents may be requested based on loan type."),
-            ("How does the AI process my application?", "Our system uses three AI agents: Document Validation Agent checks your uploaded documents, Policy Compliance Agent verifies against lending policies, and Risk Evaluation Agent assesses your risk profile. Each agent provides a score and recommendation."),
-            ("What do the risk levels mean?", "Low Risk: All documents verified, income stable, loan within limits. Medium Risk: Minor mismatches or missing optional info. High Risk: Missing mandatory documents, income below minimum, or false information."),
-            ("How long does loan processing take?", "Document validation completes in minutes. Policy review and risk assessment take 1-2 business days. Final officer decision follows within 24 hours of review completion."),
-            ("Is my data secure?", "All documents are encrypted at rest and in transit. Access is role-based and all actions are logged in an immutable audit trail."),
-            ("Why was my application rejected?", "Common reasons: income below minimum threshold (₹30,000/month), loan amount exceeds 20x monthly salary, missing documents, or policy violations. Check with your loan officer for specific details.")
-        ]
+        defaults = [(f["question"], f["answer"]) for f in FAQ_DATA]
         for q, a in defaults:
             db.create_faq(q, a)
         faqs = db.list_faqs()
@@ -570,57 +800,80 @@ async def get_faq(search: str = ""):
 # ANALYTICS
 # ══════════════════════════════════════════════════
 
-@app.get("/api/analytics/risk-dashboard")
-async def risk_dashboard():
+@app.get("/api/analytics/claims-dashboard")
+async def claims_dashboard():
     import json
-    applications = db.list_applications()
-    scores = []
+    claims = db.list_claims()
+    fraud_scores = []
     alerts = []
-    for a in applications:
+    for a in claims:
         meta = json.loads(a["metadata"]) if isinstance(a["metadata"], str) else (a["metadata"] or {})
-        ra = meta.get("risk_assessment", {})
-        pr = meta.get("policy_result", {})
-        score = ra.get("risk_score", meta.get("risk_score", 50))
-        scores.append(score)
-        if score > 60:
+        fa = meta.get("fraud_assessment", {})
+        score = fa.get("fraud_score", 0)
+        fraud_scores.append(score)
+        level = fa.get("fraud_level", "Unknown")
+        if level == "High":
             alerts.append({
-                "severity": "critical", "applicationId": a["id"],
-                "message": f"High risk application: {a.get('customer_name', a.get('applicant_name', 'Unknown'))} (risk score: {score})"
+                "severity": "critical", "claimId": a["id"],
+                "message": f"High fraud risk claim: {a.get('claimant_name', 'Unknown')} (score: {score})"
             })
-        elif pr.get("eligibility_status") == "Not Eligible" or meta.get("compliance_status") == "failed":
+        elif level == "Medium":
             alerts.append({
-                "severity": "warning", "applicationId": a["id"],
-                "message": f"Compliance issue: {a.get('customer_name', a.get('applicant_name', 'Unknown'))}"
+                "severity": "warning", "claimId": a["id"],
+                "message": f"Medium fraud risk claim: {a.get('claimant_name', 'Unknown')} (score: {score})"
             })
-    high_risk_count = sum(1 for s in scores if s > 60)
-    total = len(scores) or 1
+    high_risk_count = sum(1 for s in fraud_scores if s > 60)
+    total = len(fraud_scores) or 1
     high_risk_pct = round(high_risk_count / total * 100, 1)
     return {
-        "predictedDefaultRate": 2.41, "highRiskPortfolio": high_risk_pct,
-        "highRiskDelta": 1.2, "automatedPassRate": 84.2,
-        "riskAlerts": alerts[:5],
+        "avgFraudScore": round(sum(fraud_scores) / total, 1) if fraud_scores else 0,
+        "highRiskPortfolio": high_risk_pct,
+        "highRiskDelta": 1.2,
+        "automatedPassRate": 76.4,
+        "fraudAlerts": alerts[:5],
         "commonFailurePoints": [
-            {"category": "Income Verification", "percentage": 48},
-            {"category": "Document Completeness", "percentage": 32},
-            {"category": "Compliance Thresholds", "percentage": 20}
+            {"category": "Document Completeness", "percentage": 42},
+            {"category": "Coverage Exclusions", "percentage": 31},
+            {"category": "Amount vs Coverage", "percentage": 27}
         ]
+    }
+
+@app.get("/api/analytics/fraud-dashboard")
+async def fraud_dashboard():
+    import json
+    claims = db.list_claims()
+    by_level = {"Low": 0, "Medium": 0, "High": 0}
+    for a in claims:
+        meta = json.loads(a["metadata"]) if isinstance(a["metadata"], str) else (a["metadata"] or {})
+        level = meta.get("fraud_assessment", {}).get("fraud_level", "Low")
+        by_level[level] = by_level.get(level, 0) + 1
+    total = len(claims) or 1
+    return {
+        "fraudLevels": {
+            "low": round(by_level["Low"] / total * 100, 1),
+            "medium": round(by_level["Medium"] / total * 100, 1),
+            "high": round(by_level["High"] / total * 100, 1),
+        },
+        "totalClaims": len(claims),
+        "thresholds": fraud_case_service.get_thresholds(),
     }
 
 @app.get("/api/analytics/pipeline-health")
 async def pipeline_health():
-    return {"ocrParseRate": "450 docs / min", "tokenLatencyMs": 124, "ragVectorCacheHitRate": 99.81}
+    return {"ocrParseRate": "320 docs / min", "tokenLatencyMs": 132, "ragVectorCacheHitRate": 99.4}
 
 # ══════════════════════════════════════════════════
-# CHAT (AI ASSISTANT)
+# CHAT (CUSTOMER ASSISTANT)
 # ══════════════════════════════════════════════════
 
-POLICY_RULES = {
-    "salary": "Minimum monthly salary is ₹30,000 (Section 3 - Income Requirements)",
-    "loan amount": "Loan amount should not exceed 20 times monthly salary (Section 5 - Loan Amount Rules)",
-    "document": "Mandatory documents: Salary Slip (3 months), Bank Statement (6 months), Employment Letter (Section 2)",
-    "employment": "At least 12 months with current employer required (Section 4 - Employment Requirements)",
-    "age": "Applicant must be between 21 and 60 years of age (Section 1 - Eligibility)",
-    "risk": "Risk levels: Low (all docs, income verified), Medium (minor mismatches), High (missing docs/false info) - Section 6",
+CLAIM_POLICY_RULES = {
+    "coverage": "Claims are covered for Auto, Health, Property, Fire, Theft, Travel and Liability events during the active policy period (Section 1 - Coverage Scope).",
+    "documents": "Mandatory documents: Claim Form, Policy Document, Proof of Loss. Additional docs depend on claim type (Section 2 - Required Documents).",
+    "claim amount": "Claim amounts must not exceed the coverage limit specified in the policy (Section 3 - Coverage Limits).",
+    "exclusion": "Excluded events include intentional damage, self-inflicted loss, pre-existing conditions, and losses from illegal activity (Section 4 - Exclusions).",
+    "report": "Claims must be reported within 30 days of the incident date (Section 1 - Coverage Scope).",
+    "appeal": "Rejected claims can be appealed within 30 days (Section 7 - Claim Resolution).",
+    "fraud": "Claims are screened against historical fraud patterns. Flagged claims always require a claim officer's review (Section 5 - Fraud Screening Rules).",
 }
 
 @app.post("/api/chat")
@@ -633,25 +886,24 @@ async def chat(req: ChatRequest):
         except Exception:
             pass
 
-    # Intent shortcuts — fast path, no LLM needed
     if intent_label == "document_processing":
-        return {"text": ("To apply for a loan, you need: Salary Slip (last 3 months), "
-                         "Bank Statement (last 6 months), and Employment Letter. "
-                         "Upload them through your application dashboard."),
+        return {"text": ("To file a claim, you need: Claim Form (signed), Policy Document, and Proof of Loss. "
+                         "Additional documents may include Medical Reports, Police Reports, or Invoices depending on your claim type. "
+                         "Upload them through your claim dashboard."),
                 "reasoning": "Intent-based document guidance",
                 "intent": intent_label,
-                "policyGrounding": {"documentName": "Loan Policy", "clause": "Section 2 - Required Documents",
-                                    "extractedText": "Mandatory documents: Salary Slip, Bank Statement, Employment Letter"}}
+                "policyGrounding": {"documentName": "Insurance Claims Policy", "clause": "Section 2 - Required Documents",
+                                    "extractedText": "Mandatory documents: Claim Form, Policy Document, Proof of Loss"}}
 
-    if intent_label == "application_status":
-        return {"text": ("You can check your application status in the dashboard. "
-                         "If you need specific details about your application, "
-                         "please contact your loan officer."),
+    if intent_label == "claim_status":
+        return {"text": ("You can check your claim status in the dashboard. "
+                         "If you need specific details about your claim, "
+                         "please contact a claim officer."),
                 "reasoning": "Intent-based status guidance",
                 "intent": intent_label,
                 "policyGrounding": None}
 
-    # LLM path — for policy, risk, and general queries
+    # LLM path — for policy, explanation, and general queries
     try:
         if llm_service.health_check():
             response = customer_service.answer(question=req.message, mode="customer_advisory")
@@ -659,41 +911,41 @@ async def chat(req: ChatRequest):
             ct = ctx[:500] if ctx else ""
             return {"text": response, "reasoning": "LLM response with RAG context.",
                     "intent": intent_label,
-                    "policyGrounding": {"documentName": "Loan Policy", "clause": "Policy RAG",
+                    "policyGrounding": {"documentName": "Insurance Claims Policy", "clause": "Policy RAG",
                                         "extractedText": ct or "Policy context retrieved."}}
     except Exception as e:
         logger.warning(f"LLM chat failed: {e}")
 
     # Fallback rules
     msg = req.message.lower()
-    matched = [v for k, v in POLICY_RULES.items() if k in msg]
+    matched = [v for k, v in CLAIM_POLICY_RULES.items() if k in msg]
     if matched:
-        return {"text": "Based on our lending policy:\n\n" + "\n\n".join(f"• {m}" for m in matched) +
+        return {"text": "Based on our claims policy:\n\n" + "\n\n".join(f"• {m}" for m in matched) +
                 ("\n\nWould you like more details?" if len(matched) == 1 else ""),
                 "reasoning": "Rule-based match", "intent": intent_label,
                 "policyGrounding": {
-                    "documentName": "Home Loan Policy", "clause": "Matched Rules",
+                    "documentName": "Insurance Claims Policy", "clause": "Matched Rules",
                     "extractedText": "\n".join(matched)}}
     ctx = policy_service.retrieve_context(req.message, top_k=3)
     if ctx.strip():
-        return {"text": f"Based on our lending policy:\n\n{ctx[:800]}", "reasoning": "Policy text retrieval",
+        return {"text": f"Based on our claims policy:\n\n{ctx[:800]}", "reasoning": "Policy text retrieval",
                 "intent": intent_label,
-                "policyGrounding": {"documentName": "Home Loan Policy", "clause": "Full text",
+                "policyGrounding": {"documentName": "Insurance Claims Policy", "clause": "Full text",
                                     "extractedText": ctx[:500]}}
-    return {"text": "I can help with policy questions about salary, loan amounts, required documents, employment criteria, age, and risk. Please ask about a specific policy area.",
+    return {"text": "I can help with questions about claim coverage, required documents, exclusions, reporting timelines, and appeal options. Please ask about a specific policy area.",
             "reasoning": "General guidance", "intent": intent_label,
             "policyGrounding": {
-                "documentName": "Home Loan Policy", "clause": "General",
-                "extractedText": "Home Loan Policy covering eligibility, documents, income, employment, loan amounts, and risk."}}
+                "documentName": "Insurance Claims Policy", "clause": "General",
+                "extractedText": "Claims policy covering coverage scope, documents, limits, exclusions, fraud screening, and resolution."}}
 
 # ══════════════════════════════════════════════════
 # FILE UPLOAD (generic)
 # ══════════════════════════════════════════════════
 
 @app.post("/api/uploads")
-async def upload_files(files: List[UploadFile] = File(...), application_id: str = Form("")):
+async def upload_files(files: List[UploadFile] = File(...), claim_id: str = Form("")):
     results = []
-    ud = f"data/uploads/{application_id or datetime.now().strftime('%Y%m%d%H%M%S')}"
+    ud = f"data/uploads/{claim_id or datetime.now().strftime('%Y%m%d%H%M%S')}"
     os.makedirs(ud, exist_ok=True)
     for file in files:
         fp = os.path.join(ud, file.filename)
@@ -706,62 +958,54 @@ async def upload_files(files: List[UploadFile] = File(...), application_id: str 
     return {"uploadedFiles": results}
 
 # ══════════════════════════════════════════════════
-# LEGACY BUSINESS ENDPOINTS (preserved)
+# LEGACY BUSINESS ENDPOINTS (claims domain)
 # ══════════════════════════════════════════════════
 
-class LoanApplicationRequest(BaseModel):
-    customer_name: str; customer_age: int; customer_phone: str
-    loan_type: str; loan_amount: float; monthly_salary: float; employment_type: str
+class ClaimApplicationRequest(BaseModel):
+    claimant_name: str; claim_type: str; claim_amount: float; policy_number: str = ""
+    incident_date: str = ""; loss_description: str = ""
 
-class ProcessApplicationRequest(BaseModel):
-    application_id: str; file_paths: List[str]; document_types: List[str]
+class ProcessClaimRequest(BaseModel):
+    claim_id: str; file_paths: List[str]; document_types: List[str]
 
 class CustomerQueryRequest(BaseModel):
     question: str; mode: str = "customer_advisory"
 
-class HumanReviewRequest(BaseModel):
-    application_id: str; decision: str; reviewer: str; comments: str = ""
-
-@app.post("/api/business/loan-application")
-async def create_loan_application(request: LoanApplicationRequest):
+@app.post("/api/business/claim")
+async def create_business_claim(request: ClaimApplicationRequest):
     try:
-        lt = LoanType[request.loan_type.upper().replace(" ", "_")]
+        ct = ClaimType[request.claim_type.upper().replace(" ", "_")]
     except KeyError:
-        raise HTTPException(400, f"Invalid loan type: {request.loan_type}")
-    app_id = f"LEND-{uuid.uuid4().hex[:8].upper()}"
-    import json
-    meta = json.dumps({})
-    db.save_application(app_id, request.customer_name, "", request.customer_phone,
-                        request.loan_type.upper(), request.loan_amount, 24, 8.5, "PENDING", meta)
-    return {"application_id": app_id, "status": "created",
-            "message": "Loan application created. Upload documents to proceed."}
+        raise HTTPException(400, f"Invalid claim type: {request.claim_type}")
+    claim_id = f"CLM-{uuid.uuid4().hex[:8].upper()}"
+    db.save_claim(claim_id, request.claimant_name, "", "", request.policy_number,
+                  request.claim_type.upper(), request.claim_amount, request.incident_date,
+                  "RECEIVED", "{}")
+    return {"claim_id": claim_id, "status": "created",
+            "message": "Claim created. Upload documents to proceed."}
 
-@app.post("/api/business/process-application")
-async def process_loan_application(request: ProcessApplicationRequest):
+@app.post("/api/business/process-claim")
+async def process_business_claim(request: ProcessClaimRequest):
     try:
-        row = db.get_application(request.application_id)
+        row = db.get_claim(request.claim_id)
         if not row:
-            raise HTTPException(404, "Application not found")
+            raise HTTPException(404, "Claim not found")
 
-        LOANTYPE_FROM_DB = {
-            "HOME": LoanType.HOME, "PERSONAL": LoanType.PERSONAL,
-            "VEHICLE": LoanType.VEHICLE, "EDUCATION": LoanType.EDUCATION,
-            "BUSINESS": LoanType.BUSINESS
-        }
-        app_obj = LoanApplication(
-            application_id=row["id"],
-            customer_name=row.get("customer_name", ""),
-            customer_age=0,
-            customer_phone=row.get("customer_phone", ""),
-            loan_type=LOANTYPE_FROM_DB.get(row.get("loan_type", "HOME").upper(), LoanType.HOME),
-            loan_amount=row.get("loan_amount", 0),
-            monthly_salary=0,
-            employment_type="Unknown",
-            application_status=ApplicationStatus.PENDING
+        CLAIMTYPE_FROM_DB = {v: k for k, v in CLAIMTYPE_REVERSE.items()}
+        claim_obj = Claim(
+            claim_id=row["id"],
+            claimant_name=row.get("claimant_name", ""),
+            claimant_email=row.get("claimant_email", ""),
+            claimant_phone=row.get("claimant_phone", ""),
+            policy_number=row.get("policy_number", ""),
+            claim_type=CLAIMTYPE_FROM_DB.get(row.get("claim_type", "AUTO").upper(), ClaimType.AUTO),
+            claim_amount=row.get("claim_amount", 0),
+            incident_date=row.get("incident_date", ""),
+            claim_status=ClaimStatus.RECEIVED
         )
 
-        result = orchestrator.process_application(
-            application=app_obj,
+        result = orchestrator.process_claim(
+            claim=claim_obj,
             file_paths=request.file_paths,
             document_types=request.document_types)
 
@@ -770,43 +1014,46 @@ async def process_loan_application(request: ProcessApplicationRequest):
         if row:
             import json
             meta = json.loads(row["metadata"]) if isinstance(row["metadata"], str) else (row["metadata"] or {})
-            meta["risk_assessment"] = serialized["risk_assessment"]
+            meta["fraud_assessment"] = serialized["fraud_assessment"]
             meta["policy_result"] = serialized["policy_result"]
+            meta["escalation_decision"] = serialized["escalation_decision"]
             meta["extracted_data"] = serialized["extracted_data"]
             meta["missing_documents"] = serialized["missing_documents"]
             meta["needs_human_review"] = serialized["needs_human_review"]
             meta["human_review_reason"] = serialized["human_review_reason"]
-            new_status = serialized.get("application_status", "POLICY_REVIEW")
-            db.update_application(request.application_id, new_status, json.dumps(meta))
+            new_status = serialized.get("claim_status", "INTAKE")
+            db.update_claim(request.claim_id, new_status, json.dumps(meta))
 
         return {
-            "application_id": request.application_id,
-            "status": serialized.get("application_status", "processed"),
+            "claim_id": request.claim_id,
+            "status": serialized.get("claim_status", "processed"),
             "missing_documents": serialized.get("missing_documents", []),
             "needs_human_review": serialized.get("needs_human_review", False),
-            "risk_assessment": serialized.get("risk_assessment", {}),
+            "fraud_assessment": serialized.get("fraud_assessment", {}),
             "policy_result": serialized.get("policy_result", {}),
+            "escalation_decision": serialized.get("escalation_decision", {}),
             "extracted_data": serialized.get("extracted_data", {}),
         }
     except Exception as e:
         raise HTTPException(500, detail=str(e))
 
-@app.get("/api/business/application/{application_id}/risk")
-async def get_risk_assessment(application_id: str):
-    row = db.get_application(application_id)
+@app.get("/api/business/claim/{claim_id}/fraud")
+async def get_business_fraud_assessment(claim_id: str):
+    row = db.get_claim(claim_id)
     if row:
         import json
         meta = json.loads(row["metadata"]) if isinstance(row["metadata"], str) else (row["metadata"] or {})
-        ra = meta.get("risk_assessment", {})
-        return {"application_id": application_id,
-                "risk_level": ra.get("risk_level", "Unknown"),
-                "risk_score": ra.get("risk_score", 0),
-                "confidence_score": ra.get("confidence_score", 0),
-                "reasons": ra.get("reasons", ["Risk assessment not yet available"]),
-                "recommendation": ra.get("recommendation", "Pending"),
-                "triggered_rules": ra.get("triggered_rules", []),
-                "llm_explanation": ra.get("llm_explanation", "")}
-    return {"application_id": application_id, "message": "Risk assessment not available"}
+        fa = meta.get("fraud_assessment", {})
+        return {"claim_id": claim_id,
+                "fraud_level": fa.get("fraud_level", "Unknown"),
+                "fraud_score": fa.get("fraud_score", 0),
+                "confidence_score": fa.get("confidence_score", 0),
+                "similarity_score": fa.get("similarity_score"),
+                "reasons": fa.get("reasons", ["Fraud screening not yet available"]),
+                "recommendation": fa.get("recommendation", "Pending"),
+                "triggered_rules": fa.get("triggered_rules", []),
+                "llm_explanation": fa.get("llm_explanation", "")}
+    return {"claim_id": claim_id, "message": "Fraud assessment not available"}
 
 @app.post("/api/customer/chat")
 async def customer_chat(request: CustomerQueryRequest):
@@ -814,17 +1061,6 @@ async def customer_chat(request: CustomerQueryRequest):
         return {"response": orchestrator.customer_chat(question=request.question, mode=request.mode), "mode": request.mode}
     except Exception as e:
         raise HTTPException(500, detail=str(e))
-
-@app.get("/api/customer/eligibility")
-async def check_eligibility(monthly_salary: float, loan_amount: float, employment_duration_months: int = 0):
-    eligible = monthly_salary >= 30000 and loan_amount <= monthly_salary * 20
-    reasons = []
-    if monthly_salary < 30000:
-        reasons.append(f"Monthly salary ₹{monthly_salary:,.0f} is below minimum ₹30,000")
-    if loan_amount > monthly_salary * 20:
-        reasons.append(f"Loan amount ₹{loan_amount:,.0f} exceeds 20x monthly salary (max ₹{monthly_salary * 20:,.0f})")
-    return {"eligible": eligible, "reasons": reasons if reasons else ["No eligibility issues found"],
-            "message": "Eligibility check based on basic policy rules."}
 
 if __name__ == "__main__":
     import uvicorn

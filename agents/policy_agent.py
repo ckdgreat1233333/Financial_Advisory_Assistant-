@@ -1,21 +1,29 @@
 from services.policy_service import PolicyService
-from models.application import LoanApplication
-from models.extracted_data import ExtractedData
+from models.claim import Claim
+from models.extracted_data import ClaimExtractedData
 from models.policy import PolicyResult
 
 
-class PolicyAgent:
+class PolicyInterpretationAgent:
 
     def __init__(self):
         self.policy = PolicyService()
 
-    def check_compliance(
+    def interpret_coverage(
         self,
-        application: LoanApplication,
-        extracted_data: ExtractedData,
+        claim: Claim,
+        extracted_data: ClaimExtractedData,
         missing_docs: list[str]
     ) -> PolicyResult:
-        return self.policy.check_compliance(application, extracted_data, missing_docs)
+        return self.policy.interpret_coverage(claim, extracted_data, missing_docs)
+
+    def check_compliance(
+        self,
+        claim: Claim,
+        extracted_data: ClaimExtractedData,
+        missing_docs: list[str]
+    ) -> PolicyResult:
+        return self.policy.interpret_coverage(claim, extracted_data, missing_docs)
 
     def search(self, query: str) -> str:
         return self.policy.retrieve_context(query)

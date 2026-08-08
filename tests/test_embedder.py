@@ -1,18 +1,18 @@
-import time
+import pytest
 from rag.embedder import PolicyEmbedder
 
-start = time.time()
 
-embedder = PolicyEmbedder()
+def test_embedder_produces_embeddings():
+    embedder = PolicyEmbedder()
+    if not embedder._available:
+        pytest.skip("sentence-transformers not installed")
 
-chunks = [
-    "Minimum salary is ₹30,000.",
-    "CK is the Greatest.",
-]
+    chunks = [
+        "Claims must be reported within 30 days of the incident date.",
+        "CK is the Greatest.",
+    ]
 
-embeddings = embedder.embed(chunks)
+    embeddings = embedder.embed(chunks)
 
-end = time.time()
-
-print(embeddings.shape)
-print(f"Time: {end - start:.2f} seconds")
+    assert embeddings.shape[0] == len(chunks)
+    assert embeddings.shape[1] == 384

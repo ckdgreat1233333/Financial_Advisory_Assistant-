@@ -22,7 +22,9 @@ TOKENIZER_PATH = BASE_DIR / "trained_models" / "intent_classifier_tokenizer.pkl"
 
 class IntentTransformerClassifier(nn.Module):
 
-    def __init__(self, model_name="distilbert-base-uncased", num_classes=5):
+    def __init__(self, model_name="distilbert-base-uncased", num_classes=None):
+        if num_classes is None:
+            num_classes = len(list(IntentType))
         super().__init__()
         self.bert = AutoModel.from_pretrained(model_name)
         self.dropout = nn.Dropout(0.3)
@@ -94,7 +96,7 @@ class IntentModelTrainer:
 
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-        model = IntentTransformerClassifier(num_classes=5).to(device)
+        model = IntentTransformerClassifier(num_classes=len(list(IntentType))).to(device)
         criterion = nn.CrossEntropyLoss()
         optimizer = torch.optim.AdamW(model.parameters(), lr=2e-5)
 

@@ -21,9 +21,10 @@ class CustomerService:
 
         self._intent_map = {
             IntentType.POLICY_QUERY: "policy_prompt.txt",
+            IntentType.CLAIM_EXPLANATION: "explanation_prompt.txt",
+            IntentType.CLAIM_STATUS: "customer_prompt.txt",
+            IntentType.NEXT_STEPS: "customer_prompt.txt",
             IntentType.DOCUMENT_PROCESSING: "customer_prompt.txt",
-            IntentType.APPLICATION_STATUS: "customer_prompt.txt",
-            IntentType.RISK_QUERY: "customer_prompt.txt",
             IntentType.GENERAL_QUERY: "customer_prompt.txt",
         }
 
@@ -45,15 +46,7 @@ class CustomerService:
                 pass
         return IntentType.GENERAL_QUERY
 
-    def answer(
-
-        self,
-
-        question: str,
-
-        mode="customer_advisory",
-
-    ):
+    def answer(self, question: str, mode="customer_advisory"):
 
         intent = self.classify_intent(question)
 
@@ -69,25 +62,35 @@ class CustomerService:
         context = self.policy.retrieve_context(question)
 
         prompt = self.prompts.load(
-
             template,
-
             question=question,
-
             context=context,
-
         )
 
         response = self.llm.generate(prompt)
 
         self.audit.log(
-
             actor="Customer Agent",
-
             action="Customer Query",
-
             details=f"Intent: {intent.value}, Question: {question}",
-
         )
 
         return response
+
+    def explain_claim(self, decision: str, claim_information: str, reasons: str) -> str:
+        """Explain a claim decision to a customer in plain language."""
+        prompt = self.prompts.load(
+            "explanation_prompt.txt",
+            decision=decision,
+            claim_information=claim_information,
+            reasons=reasons,
+        )
+        try:
+            return self.llm.generate(prompt)
+        except Exception:
+            return (
+                f"Your claim is currently {decision.lower()}.\n\n"
+                f"Here is what you should know:\n{reasons}\n\n"
+                "This explanation is informational only. A claim officer makes the final decision. "
+                "Please contact us if you have further questions."
+            )

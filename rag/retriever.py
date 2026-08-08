@@ -30,4 +30,5 @@ class PolicyRetriever:
         return [
             self.chunks[index]
             for index in indices[0]
+            if index >= 0 and index < len(self.chunks)
         ]
