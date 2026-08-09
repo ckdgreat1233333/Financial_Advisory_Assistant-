@@ -1,8 +1,0 @@
-CASE_ID: FC-004
-CASE_TYPE: Fire
-FRAUD_LEVEL: High
-FRAUD_INDICATORS: arson for profit; business distress; accelerant detection
-RESOLUTION: Denied; criminal investigation referral
-
-NARRATIVE:
-A business owner filed a fire claim on a warehouse that had suffered two consecutive quarters of losses. The policy was upgraded to a higher coverage limit four weeks before the fire. The fire broke out on the night before a major loan repayment was due. Fire department reports noted multiple points of origin, which is inconsistent with accidental ignition, and traces of accelerant were detected. Inventory valuation in the claim was more than double the value recorded in the previous quarterly filing. The owner had inquired about claim settlement procedures one week before the incident.

@@ -1,8 +1,0 @@
-CASE_ID: FC-003
-CASE_TYPE: Property
-FRAUD_LEVEL: Medium
-FRAUD_INDICATORS: inflated inventory; duplicate receipts; over-stated replacement value
-RESOLUTION: Partial payout after audit; claimant penalized
-
-NARRATIVE:
-A homeowner filed a burglary claim listing a large inventory of electronic items, each backed by receipts that appeared uniform in formatting. Several receipts were traced to a single printer and contained identical timestamps. The claimed replacement values were significantly higher than retail market prices for the listed models. The total claimed amount was close to the policy's contents limit. Neighbor statements suggested the property had been empty for several weeks prior to the reported incident.

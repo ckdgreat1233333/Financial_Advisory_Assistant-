@@ -1,250 +1,254 @@
-# API Reference — Insurance Claims Intelligence Platform
+# API Reference — Regulatory & Compliance Copilot
 
-All endpoints return JSON. Auth-required endpoints accept the JWT issued by `POST /api/auth/login` (the SPA stores it and sends it as a bearer token). The complete OpenAPI schema is available at `/docs` (Swagger UI) when the server is running.
+All endpoints return JSON. The complete OpenAPI schema is available at `/docs` (Swagger UI) when the server is running.
+
+The copilot exposes **two response tracks**, both grounded in the approved regulatory corpus:
+
+| Track | Endpoint | Audience | Returns |
+|-------|----------|----------|---------|
+| **Internal** | `POST /api/regulatory/query` | Compliance & audit teams | Grounded answer, verifiable citations, confidence scores, retrieval excerpts, escalation recommendation |
+| **Customer** | `POST /api/regulatory/customer-query` | Bank customers | Plain-language answer + disclaimer; internal retrieval details are **never** exposed |
 
 ---
 
 ## Authentication
 
 ### `POST /api/auth/login`
-Logs a user in and returns a JWT.
+Logs a user in.
 
 **Request:**
 ```json
 { "username": "admin", "password": "admin123", "portalType": "officer" }
 ```
-`portalType` may be `customer`, `officer`, or `admin`.
+`portalType` may be `customer` or `officer`.
 
 **Response 200:**
 ```json
 {
-  "user": { "username": "admin", "email": "...", "name": "...", "phone": "...", "role": "officer" },
-  "token": "<jwt>"
+  "user": { "username": "admin", "email": "admin@bankreg.com", "name": "Compliance Officer",
+            "phone": "+91 9876543210", "role": "officer", "password": null },
+  "token": "tok-<hex>"
 }
 ```
 
 ### `POST /api/auth/register`
+**Request:**
 ```json
 { "username": "cust1", "fullName": "Ravi Kumar", "email": "r@mail.com",
   "password": "pass123", "phone": "999", "portalType": "customer" }
 ```
-**Response 200:** `{ "user": {...}, "token": "<jwt>" }`
+Password must be at least 6 characters. **Response 200:** `{ "user": {...}, "token": "tok-..." }`
 
 ### `POST /api/auth/logout`
-**Response 200:** `{ "status": "logged_out" }`
+**Response 200:** `{ "success": true }`
 
-### `GET /api/auth/me`
-Returns the current user. **Response:** `{ "user": {...} }`
-
----
-
-## Claims
-
-### `POST /api/claims`
-Creates a new claim.
-
-**Request:**
-```json
-{
-  "claimantName": "Ravi Kumar",
-  "claimantEmail": "ravi@mail.com",
-  "claimantPhone": "999",
-  "policyNumber": "P-AUTO-2026-0001",
-  "type": "auto",
-  "amount": 5000,
-  "incidentDate": "2026-07-20",
-  "lossDescription": "Collision damage on Highway 101",
-  "documents": [
-    { "name": "claim_form.txt", "docType": "claim_form" },
-    { "name": "policy.txt", "docType": "policy_document" },
-    { "name": "proof.txt", "docType": "proof_of_loss" }
-  ]
-}
-```
-`type` is one of: `auto`, `health`, `property`, `fire`, `theft`, `travel`, `liability`.
-
-**Response 200:** `{ "claim": { ...claim object, "id": "CLM-XXXX", "status": "received" } }`
-
-### `GET /api/claims?email=`
-Lists claims. Customers pass their email to see only their own claims.
-
-**Response 200:** `{ "claims": [ ...claim objects ] }`
-
-### `GET /api/claims/{claim_id}`
-Full claim detail, including document list and the agent consensus.
-
-**Response 200:** a claim object (not wrapped):
-```json
-{
-  "id": "CLM-XXXX", "claimantName": "...", "status": "received",
-  "type": "auto", "amount": 5000.0, "progress": 25,
-  "fraudScore": 30, "fraudLevel": "Unknown", "coverageStatus": "covered",
-  "documents": [ { "id": "...", "name": "claim_form.txt", "type": "Claim Form",
-                   "docType": "claim_form", "status": "pending" } ],
-  "agentConsensus": {
-    "documentValidation":   { "status": "pass", "score": 90, "details": "..." },
-    "policyInterpretation": { "status": "pass", "score": 90, "details": "..." },
-    "fraudScreening":       { "status": "pass", "score": 30, "details": "..." },
-    "escalationDecision":   { "status": "pass", "score": 100, "details": "..." }
-  }
-}
-```
-
-**Status values:** `received | under_review | accepted | rejected`
-**Coverage:** `covered | review_required | failed`
-**Fraud levels:** `Low | Medium | High | Unknown`
-
-### `POST /api/claims/{claim_id}/documents`
-Uploads claim documents (multipart/form-data, field name `files`). When the three mandatory documents (Claim Form, Policy Document, Proof of Loss) are present, the orchestrator pipeline runs automatically.
-
-**Response 200:** `{ "claim": { ...updated claim object } }`
-
-### `POST /api/claims/{claim_id}/process`
-Manually re-runs the agent pipeline on an existing claim.
-**Response 200:** updated claim object.
-
-### `PATCH /api/claims/{claim_id}/accept` | `PATCH /api/claims/{claim_id}/reject`
-Officer decision (human-in-the-loop). Every action is written to the audit ledger.
-
-**Request:**
-```json
-{ "actor": "Admin Officer", "reason": "All documents verified" }
-```
-
-**Response 200:**
-```json
-{ "claim": { "...": "..." }, "auditLog": { "eventType": "Claims Officer Acceptance", "..." } }
-```
-
-### `PATCH /api/claims/{claim_id}/override`
-Officer override of an agent recommendation.
-**Request:** `{ "actor": "...", "decision": "...", "reason": "..." }`
-
-### `PATCH /api/claims/{claim_id}/documents/{doc_id}`
-Officer updates a document's review status.
-
-**Request:**
-```json
-{ "status": "verified" }
-```
-**Response 200:** updated claim object (not wrapped).
-
-### `GET /api/claims/{claim_id}/documents/{doc_name}/file`
-Streams the uploaded document for in-browser viewing.
-**Response 200:** the file body with its content type.
-
-### `GET /api/claims/{claim_id}/fraud-analysis`
-Detailed fraud screening for a claim.
-
-**Response 200:**
-```json
-{
-  "claim_id": "CLM-XXXX",
-  "fraud_level": "Low",
-  "fraud_score": 18.0,
-  "confidence_score": 0.9,
-  "similarity_score": null,
-  "similar_cases": [],
-  "reasons": ["No significant fraud indicators identified"],
-  "fraud_indicators": [],
-  "triggered_rules": [],
-  "llm_explanation": "..."
-}
-```
-
-### `GET /api/claims/{claim_id}/explanation`
-Explainable decision in plain language (ethics-aware — never exposes internal scores, and uses "undergoing additional verification" phrasing for flagged claims).
-
-**Response 200:**
-```json
-{
-  "claim_id": "CLM-XXXX",
-  "decision": "under review",
-  "explanation": "...",
-  "disclaimer": "..."
-}
-```
-
----
-
-## Customer Chat
-
-### `POST /api/chat`
-Grounded customer assistant. Answers are backed by the policy document (RAG) or matched policy rules, never free-form LLM guesswork.
-
-**Request:**
-```json
-{ "message": "What documents do I need?", "history": [], "claimsContext": [] }
-```
-
-**Response 200:**
-```json
-{
-  "text": "To file a claim, you need: Claim Form, Policy Document, and Proof of Loss...",
-  "reasoning": "Rule-based match",
-  "intent": "POLICY_QUERY",
-  "policyGrounding": { "documentName": "Insurance Claims Policy", "clause": "...", "extractedText": "..." }
-}
-```
-
-### `POST /api/customer/chat`
-Alternative customer-agent endpoint (`question` + `mode`).
-
----
-
-## Audit & Administration
-
-### `GET /api/audit-logs`
-Immutable audit ledger.
-**Response 200:** `{ "logs": [ { "timestamp": "...", "actor": "...", "eventType": "...", "riskLevel": "...", "details": "..." } ] }`
-
-### `GET /api/fraud-cases`
-Historical fraud case corpus used for similarity screening.
-**Response 200:** `{ "fraudCases": [...] }`
-
-### `GET /api/fraud-cases/thresholds`
-**Response 200:** `{ "high": 0.7, "medium": 0.5 }`
-
-### `GET /api/policy-documents`
-**Response 200:** `{ "policyDocuments": [...] }`
-
-### `POST /api/policy-documents` · `DELETE /api/policy-documents/{doc_id}`
-Create / archive policy documents (admin).
-
-### `GET /api/faq`
-**Response 200:** `{ "faqs": [...] }`
+### `GET /api/auth/me?username=<username>`
+Returns the current user. **Response 200:** `{ "user": {...} }`. **401** if no such user.
 
 ### `GET /api/users`
-**Response 200:** `{ "users": [...] }`
+Lists all users. **Response 200:** `{ "users": [ { "username", "email", "name", "phone", "role" }, ... ] }`
 
 ### `PATCH /api/users/profile`
 **Request:** `{ "name": "...", "email": "...", "phone": "...", "username": "..." }`
-**Response 200:** `{ "user": {...} }`
+**Response 200:** `{ "user": { "role", "email", "name", "phone" } }`
 
 ### `DELETE /api/users/{username}`
-Removes a user (admin).
+Removes a user. **Response 200:** `{ "success": true }`, **404** if not found.
 
 ---
 
-## Analytics
+## Regulatory Copilot — Internal Track (Compliance & Audit)
 
-### `GET /api/analytics/claims-dashboard`
-**Response:** `{ "avgFraudScore": ..., "highRiskPortfolio": ..., "highRiskDelta": ..., "automatedPassRate": ..., "fraudAlerts": ..., "commonFailurePoints": [...] }`
+### `POST /api/regulatory/query`
 
-### `GET /api/analytics/fraud-dashboard`
-Fraud-focused dashboard metrics.
+Ask a grounded compliance question. The answer is generated **only** from retrieved, approved regulatory clauses.
 
-### `GET /api/analytics/pipeline-health`
-**Response:** `{ "ocrParseRate": "320 docs / min", "tokenLatencyMs": 132, "ragVectorCacheHitRate": 99.4 }`
+**Request:**
+```json
+{ "question": "What documents are required for KYC verification of an individual customer?" }
+```
+
+**Response 200:**
+```json
+{
+  "track": "internal",
+  "question": "What documents are required for KYC verification of an individual customer?",
+  "answered": true,
+  "answer": "For an individual customer, KYC verification may be satisfied by presenting any one officially valid document, such as a passport, driving licence, Voter ID, Aadhaar card, or NREGA job card.",
+  "citations": [
+    {
+      "chunk_id": "rbi_kyc_master_direction-1_1",
+      "clause_ref": "1.1",
+      "source": "Master Direction - Know Your Customer (KYC) Norms",
+      "circular_no": "RBI/2025-26/09",
+      "quote": "Identity shall be verified using an officially valid document.",
+      "grounded": true
+    }
+  ],
+  "retrieved": [
+    {
+      "chunk_id": "rbi_kyc_master_direction-1_1",
+      "clause_ref": "1.1",
+      "source": "Master Direction - Know Your Customer (KYC) Norms",
+      "circular_no": "RBI/2025-26/09",
+      "version": "v1.0",
+      "similarity": 0.78,
+      "text": "1.1 ..."
+    }
+  ],
+  "retrieval_confidence": 0.78,
+  "answer_confidence": 0.9,
+  "confidence": 0.83,
+  "confidence_level": "High",
+  "needs_escalation": false,
+  "escalation_reason": null,
+  "contradiction_detected": false,
+  "disclaimer": null
+}
+```
+
+**Key fields:**
+
+| Field | Meaning |
+|-------|---------|
+| `answered` | `true` when a grounded answer was produced, `false` for the "Information not found" response |
+| `citations[].grounded` | Whether the citation references a clause that was actually retrieved |
+| `confidence` | Combined confidence: `0.6 × retrieval + 0.4 × llm` |
+| `confidence_level` | `High` (≥ 0.75), `Medium` (≥ 0.55), `Low` |
+| `needs_escalation` | `true` when the answer requires human compliance review |
+| `escalation_reason` | Why escalation is recommended (low confidence, ungrounded citations, contradiction, or no answer) |
+| `contradiction_detected` | `true` when retrieved clauses from different documents conflict |
+| `retrieved` | Full retrieval excerpts with similarity scores (internal-only) |
+
+**Behavioural guarantees:**
+- If retrieval similarity falls below the floor (0.45), the LLM is **never called** and the response is the "Information not found" message with `answered: false` and `needs_escalation: true`.
+- If the LLM marks `not_supported`, or produces no usable answer, the same "Information not found" response is returned.
+- If two retrieved clauses contradict each other, the query is escalated for human adjudication instead of the AI picking a side.
+
+**Response when no answer (200, `answered: false`):**
+```json
+{
+  "track": "internal",
+  "answered": false,
+  "answer": "Information not found in the approved regulatory documents. Please refine the query or escalate to a compliance officer for manual research.",
+  "confidence": 0.0,
+  "confidence_level": "Low",
+  "needs_escalation": true,
+  "escalation_reason": "No relevant regulatory clause retrieved (similarity below threshold).",
+  "citations": [], "retrieved": [], "contradiction_detected": false, "disclaimer": null
+}
+```
 
 ---
 
-## Utility
+## Regulatory Copilot — Customer Track (Transparency)
 
-### `POST /api/uploads`
-Generic multipart file upload (stores under `data/uploads/`).
-**Request:** multipart field `files`, optional `claim_id` form field.
-**Response 200:** `{ "results": [ { "id": "...", "name": "...", "type": "..." } ] }`
+### `POST /api/regulatory/customer-query`
+
+Ask a plain-language question about bank regulations. The customer track never exposes internal retrieval details, circular numbers, or confidence internals.
+
+**Request:**
+```json
+{ "question": "What do I need to open a bank account?" }
+```
+
+**Response 200:**
+```json
+{
+  "track": "customer",
+  "question": "What do I need to open a bank account?",
+  "answered": true,
+  "answer": "To open a regular bank account you will need to show one government-issued identity document, such as a passport, driving licence, Voter ID, Aadhaar card or NREGA job card.",
+  "citations": [],
+  "retrieved": [],
+  "retrieval_confidence": 0.72,
+  "answer_confidence": 0.65,
+  "confidence": 0.69,
+  "confidence_level": "Medium",
+  "needs_escalation": false,
+  "escalation_reason": null,
+  "contradiction_detected": false,
+  "disclaimer": "This information is for general guidance only and is not legal advice. For help specific to your account, please contact your bank."
+}
+```
+
+**Behavioural guarantees:**
+- `retrieved` is always an empty array on the customer track — internal excerpts are never exposed.
+- Answers carry the standard `disclaimer`.
+- If no approved disclosure supports the question, the customer receives the "I could not find this information..." message with `answered: false`.
+- If the question requires a bank official (`needs_human`) or retrieved clauses conflict, the response redirects the customer to the bank with a complex-question notice and `answered: false`.
+
+---
+
+## Regulatory Corpus Management
+
+### `GET /api/regulatory/documents`
+Lists the version-controlled approved corpus (from the SQLite registry).
+
+**Response 200:**
+```json
+{
+  "documents": [
+    {
+      "doc_id": "rbi_kyc_master_direction",
+      "title": "Master Direction - Know Your Customer (KYC) Norms",
+      "circular_no": "RBI/2025-26/09",
+      "issue_date": "01-Aug-2025",
+      "version": "v1.0",
+      "category": "circular",
+      "file_path": "...\\data\\regulatory\\rbi_kyc_master_direction.txt",
+      "file_hash": "<sha256>",
+      "status": "active",
+      "ingested_at": "2026-08-08 00:00:00"
+    }
+  ]
+}
+```
+
+### `POST /api/regulatory/documents`
+Ingest a new approved regulatory document (multipart/form-data). Supported extensions: `.txt`, `.md`, `.pdf`. The file is stored in the approved corpus directory and the vector index is **rebuilt immediately** so the copilot answers from it right away.
+
+**Form fields:**
+| Field | Type | Notes |
+|-------|------|-------|
+| `file` | file | Required. The document (`.txt` / `.md` / `.pdf`) |
+| `title` | string | Optional. Falls back to the parsed document header or filename |
+| `circular_no` | string | Optional |
+| `issue_date` | string | Optional |
+| `version` | string | Optional (default `v1.0`) |
+| `category` | string | Optional (default `circular`) |
+
+**Response 200:** `{ "document": { ...registry row }, "ingested": true }`
+
+> **Note on document format:** documents are chunked at **clause level** (`1.`, `1.1`, `2.4`, ...). A document with no parseable numbered clauses is skipped by the ingest pipeline. See `docs/workflow.md` for the expected format.
+
+### `DELETE /api/regulatory/documents/{doc_id}`
+Archives a document: removes the file, deletes the registry row, and rebuilds the index. **Response 200:** `{ "success": true }`, **404** if the document is not in the registry.
+
+---
+
+## Reference & Administration
+
+### `GET /api/audit-logs?riskLevel=`
+Immutable audit ledger. `riskLevel` may be `low`, `medium`, or `high`.
+
+**Response 200:**
+```json
+{
+  "logs": [
+    { "id": "LOG-<hex>", "timestamp": "2026-08-08 12:00:00", "actor": "Regulatory Query",
+      "eventType": "Regulatory Query", "riskLevel": "low",
+      "details": "Internal query: What documents are required for KYC..." }
+  ]
+}
+```
+
+### `GET /api/faq?search=`
+FAQ list, optionally filtered by search text.
+**Response 200:** `{ "faqs": [ { "id", "question", "answer" }, ... ] }`
+
+### `GET /`
+Serves the SPA (`static/index.html`). **Response:** HTML.
 
 ---
 
@@ -254,4 +258,13 @@ Errors follow FastAPI conventions:
 ```json
 { "detail": "Human-readable error message" }
 ```
-Validation errors return `422` with a structured `detail` array.
+
+Common status codes:
+
+| Code | Meaning |
+|------|---------|
+| `400` | Bad request (e.g. unsupported file extension, password too short) |
+| `401` | Invalid credentials / not authenticated |
+| `404` | Resource not found (e.g. document to archive, user to delete) |
+| `422` | Validation error (structured `detail` array) |
+| `503` | Copilot unavailable (e.g. store failed to initialize) |

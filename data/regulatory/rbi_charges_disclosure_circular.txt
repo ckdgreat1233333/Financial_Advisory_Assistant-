@@ -1,0 +1,36 @@
+Circular No: RBI/2025-26/14
+Date: 15-Sep-2025
+Issued By: Department of Regulation
+Subject: Disclosure of Charges and Fees for Banking Services
+Version: v1.0
+Category: circular
+
+1. Disclosure of Charges
+Banks shall display a complete schedule of service charges and fees on
+their website and at every branch in a customer-friendly format. The
+schedule shall list each charge, the basis on which the charge is levied,
+and the frequency of levying the charge.
+
+1.1 Prior Notice of Revision
+No bank shall revise or introduce any charge or fee without giving the
+customer prior notice of at least thirty days before the effective date.
+The notice shall be sent through SMS, email or letter and shall clearly
+state the existing charge and the revised charge.
+
+1.2 Customer Consent
+Banks shall obtain explicit consent from the customer before levying any
+new charge on an existing product or service. In the absence of such
+consent, the bank shall provide the customer the option to close the
+account or switch to an alternate product without penalty.
+
+1.3 Penal Charges on Loans
+Penal interest or penal charges on loans shall be based on the outstanding
+amount for which default occurred and shall not be a means of revenue
+enhancement. Excessive penal charges that are not proportionate to the
+delayed amount shall be treated as usury.
+
+1.4 Communication of Changes
+Whenever a bank revises its schedule of charges, it shall update the
+website and mobile application within seven days of the effective date and
+shall communicate a summary of changes to customers along with the monthly
+statement or by other electronic means.

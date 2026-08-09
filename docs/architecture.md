@@ -1,6 +1,6 @@
-# Architecture Documentation — Insurance Claims Intelligence Platform
+# Architecture Documentation — Regulatory & Compliance Copilot
 
-> Enterprise architecture for a compliant, explainable, multi-agent insurance claims processing system using ML, RAG, and LLM orchestration.
+> Enterprise architecture for a hallucination-resistant, citation-enforced, human-in-the-loop regulatory Q&A system for banking, built on RAG with two response tracks (internal compliance vs customer transparency).
 
 ---
 
@@ -10,11 +10,11 @@
 ┌────────────────────────────────────────────────────────────────────────┐
 │                          CLIENT LAYER                                   │
 │                                                                        │
-│              Vanilla JS SPA — ClaimsGuard AI                           │
-│              (static/index.html, served at "/")                       │
-│              - Customer Portal: My Claims, Submit Claim, AI Chat      │
-│              - Officer Queue:  triage, doc review, accept/reject      │
-│              - Audit Ledger + Admin                                   │
+│              Vanilla JS SPA — Regulatory & Compliance Copilot          │
+│              (static/index.html, served at "/")                        │
+│              - Compliance Officer: Compliance Query, Regulatory        │
+│                Corpus, Audit Ledger, Admin                             │
+│              - Customer: Regulatory Transparency Assistant             │
 └───────────────────────────────┬────────────────────────────────────────┘
                                 │  HTTP REST (JSON)
 ┌───────────────────────────────┼────────────────────────────────────────┐
@@ -24,308 +24,325 @@
 │                       │   Port 8000    │                              │
 │                       └───────┬────────┘                              │
 │                               │                                        │
-│                   ┌───────────┼───────────────┐                       │
-│                   ▼           ▼               ▼                       │
-│            ┌──────────┐  ┌──────────┐   ┌───────────┐                 │
-│            │  Auth    │  │ Claims   │   │ Chat &    │                 │
-│            │  Routes  │  │  CRUD    │   │ Analytics │                 │
-│            └──────────┘  └────┬─────┘   └───────────┘                 │
-│                               │                                        │
-│                    ┌──────────▼──────────┐                            │
-│                    │   Orchestrator      │                            │
-│                    │  (Agent Flow)       │                            │
-│                    └──────────┬──────────┘                            │
-│                               │                                        │
-│              ┌────────────────┼────────────────┐                      │
-│              ▼                ▼                ▼                      │
-│     ┌────────────────┐ ┌─────────────┐ ┌───────────────┐             │
-│     │  Document      │ │   Policy    │ │   Fraud       │             │
-│     │  Agent         │ │Interpretation│ │  Detection    │             │
-│     └──────┬─────────┘ └──────┬──────┘ └──────┬────────┘             │
-│            │                  │               │                       │
-│            ▼                  ▼               ▼                       │
-│     ┌────────────┐   ┌────────────┐   ┌─────────────────────┐         │
-│     │  Document  │   │  Policy    │   │  FraudCaseService   │         │
-│     │ Processor  │   │  Service   │   │ (historical case    │         │
-│     │ (PDF/OCR/  │   │  (RAG)     │   │  similarity via FAISS)│       │
-│     │  extract)  │   └──────┬─────┘   └──────────┬──────────┘         │
-│     └──────┬─────┘          │                    │                    │
-│            │                ▼                    ▼                    │
-│            │        ┌───────────────────────────────┐                 │
-│            │        │  Escalation Decision Agent   │                 │
-│            │        │  (HITL checkpoint)           │                 │
-│            │        └───────────────┬───────────────┘                 │
-│            │                        │                                 │
-│            ▼                        ▼                                 │
-│     ┌───────────────────────────────────────────────┐                 │
-│     │            LLM Service (Groq / OpenAI SDK)    │                 │
-│     │       explanation + grounded customer chat    │                 │
-│     └───────────────────────────────────────────────┘                 │
+│                 ┌─────────────┼──────────────┐                        │
+│                 ▼             ▼              ▼                        │
+│          ┌────────────┐ ┌───────────┐ ┌───────────────┐               │
+│          │  Auth      │ │ Audit &   │ │ Regulatory    │               │
+│          │  Routes    │ │ Admin     │ │ Copilot       │               │
+│          │            │ │ Routes    │ │ (2 tracks)    │               │
+│          └────────────┘ └───────────┘ └──────┬────────┘               │
+│                                              │                        │
+│                    ┌─────────────────────────┼─────────────────┐      │
+│                    ▼                         ▼                 ▼      │
+│        ┌──────────────────┐      ┌──────────────────┐  ┌────────────┐ │
+│        │ RegulatoryCopilot│      │ agents/          │  │ LLMService │ │
+│        │ (facade)         │      │ compliance_agent │  │ (Groq via  │ │
+│        │ gating ·         │      │ customer_reg_    │  │ OpenAI SDK)│ │
+│        │ grounding ·      │      │ agent            │  │            │ │
+│        │ escalation       │      │                  │  │ gpt-oss-   │ │
+│        └────────┬─────────┘      └──────────────────┘  │ 120b       │ │
+│                 │                                       └────────────┘ │
+│                 ▼                                                     │
+│      ┌─────────────────────────────────────┐                         │
+│      │  RegulatoryKnowledgeStore           │                         │
+│      │  (regulatory/store.py)              │                         │
+│      │  corpus → hash → clause-chunk →     │                         │
+│      │  embed (MiniLM) → FAISS index       │                         │
+│      │  + manifest JSON + SQLite registry  │                         │
+│      └─────────────────────────────────────┘                         │
 │                                                                        │
-└──────────────────────────────────┬─────────────────────────────────────┘
-                                   │
-              ┌────────────────────┼─────────────────┐
-              ▼                    ▼                 ▼
-    ┌─────────────────┐   ┌────────────────┐  ┌────────────┐
-    │    SQLite DB     │   │   FAISS Index  │  │ Prompts    │
-    │  users           │   │  (vector DB)   │  │ (txt)      │
-    │  claims          │   │  384-dim       │  │            │
-    │  fraud_cases     │   │  all-MiniLM    │  │            │
-    │  audit_logs      │   │  L2 v2         │  │            │
-    │  policy_docs,faq │   └────────────────┘  └────────────┘
-    └─────────────────┘
+└──────────────────────────────┬─────────────────────────────────────────┘
+                               │
+        ┌──────────────────────┼─────────────────────┐
+        ▼                      ▼                     ▼
+┌──────────────┐   ┌───────────────────────┐  ┌─────────────┐
+│  SQLite DB    │   │  FAISS Index (L2)     │  │  Prompts    │
+│  users        │   │  data/indexes/        │  │  (txt)      │
+│  audit_logs   │   │  regulatory_index.bin │  │  compliance │
+│  faq          │   │  + regulatory_chunks  │  │  customer   │
+│  regulatory_  │   │  .json (manifest)     │  └─────────────┘
+│  docs         │   └───────────────────────┘
+└──────────────┘
 ```
 
 ---
 
 ## 2. Data Flow
 
-### Business Track — Claim Processing
+### Version-Controlled Knowledge Store
 
 ```
-Officer/Customer → POST /api/claims  (claimant, type, amount, incident, loss)
+Approved corpus (data/regulatory/*.txt|.md|.pdf)
       │
       ▼
-Customer Uploads Documents → POST /api/claims/{id}/documents
-  (Claim Form, Policy Document, Proof of Loss, + type-specific)
-      │
-      ▼
-Orchestrator.process_claim()
-      │
-   ┌──┼─────────────┬────────────────┐
-   ▼  ▼             ▼                ▼
-Document        Policy          Fraud
- Agent          Interpretation   Detection
-   │   Agent          Agent            Agent
-   ▼  │              │                │
-Validate &      Check           Rules + semantic
-Extract         coverage,      similarity to
-fields          limits,        historical fraud
-                exclusions,    cases (FAISS)
-                reporting
-      │              │                │
-      └──────────────┼────────────────┘
-                     ▼
-         Escalation Decision Agent
-         (HITL checkpoint decision)
-                     │
-   ┌─────────────────┼─────────────────┐
-   ▼                 ▼                 ▼
-Continue       Manual Review      Fraud Screen
-processing     (officer decides)  (mandatory review)
-                     │
-                     ▼
-         Officer Accept / Reject / Override
-                     │
-                     ▼
-              Audit Log (immutable)
+File hash (sha256) ──────┬── compared against manifest sidecar
+                         ▼
+              Has anything changed?
+              ├── No  → load cached FAISS index + chunks (fast start)
+              └── Yes ──► re-ingest changed/new documents
+                         │
+                         ▼
+              Parse header metadata (Circular No / Date / Subject / Version / Category)
+                         │
+                         ▼
+              Split into numbered clauses ("1.", "1.1", "2.4", ...)
+                         │
+                         ▼
+              Embed each clause (SentenceTransformer all-MiniLM-L6-v2, 384-dim, L2-normalized)
+                         │
+                         ▼
+              Build FAISS IndexFlatL2 → save regulatory_index.bin
+              Write manifest (regulatory_chunks.json) → upsert SQLite registry
 ```
 
-### Customer Track — Grounded Q&A
+**Key invariant:** the index is *always reproducible from the approved corpus*. Re-ingestion happens only when a file's hash changes or new files appear, so the store is cheap to restart and tamper-evident.
+
+### Internal Track (Compliance & Audit)
 
 ```
-Customer Question → POST /api/chat
+Compliance Officer Question → POST /api/regulatory/query
       │
       ▼
-IntentClassifier → route (status / explanation / policy / next-steps)
+RegulatoryKnowledgeStore.retrieve()  → embed query → FAISS search → top-k clauses + similarities
       │
       ▼
-PolicyService.retrieve_context()     → RAG (chunker → embed → FAISS search)
+retrieval_confidence = top-1 similarity
       │
-      ├── matched policy rules        → rule-based answer (always available)
-      └── LLM (Groq) with persona     → grounded conversational answer
+      ├── < 0.45 (NO_ANSWER_SIM_THRESHOLD)
+      │       └──► "Information not found" + escalate. LLM never called.
       │
       ▼
-Response { text, reasoning, intent, policyGrounding }
+Format context from retrieved clauses → load regulatory_compliance_prompt.txt
+      │
+      ▼
+LLM (strict JSON): { answer, citations[], confidence, not_supported, contradiction }
+      │
+      ▼
+Parse + sanitize → ground every citation against the retrieved chunks
+      │
+      ▼
+Confidence = 0.6 × retrieval + 0.4 × llm
+      │
+      ├── not_supported / empty answer      → "Information not found"
+      ├── cross-document conflict           → escalate (human adjudication)
+      ├── ungrounded citation               → escalate
+      ├── confidence < 0.55                 → escalate (compliance review)
+      └── otherwise                         → answer delivered with citations + excerpts
+      │
+      ▼
+Audit entry written (risk = high if escalated, else low)
+```
+
+### Customer Track (Transparency)
+
+```
+Customer Question → POST /api/regulatory/customer-query
+      │
+      ▼
+RegulatoryKnowledgeStore.retrieve()  → top-k clauses
+      │
+      ├── < 0.45 ──► "I could not find this information..." + disclaimer
+      │
+      ▼
+Load regulatory_customer_prompt.txt (plain-language, non-legal tone)
+      │
+      ▼
+LLM (strict JSON): { answer, confidence, not_supported, needs_human }
+      │
+      ├── not_supported                    → not-found message + disclaimer
+      ├── needs_human OR conflict detected → redirect to bank official + disclaimer
+      └── otherwise                        → plain-language answer + disclaimer
+      │
+      ▼
+Audit entry (risk = low). Internal retrieval details are never serialized.
 ```
 
 ---
 
-## 3. Agent Design
+## 3. Copilot Design
 
-| Agent | Input | Processing | Output | Escalation |
-|-------|-------|-----------|--------|-----------|
-| **Document** | file_path, doc_type | PDF→text, OCR fallback, regex extraction, required-field validation | `ClaimExtractedData`, validation status/confidence | OCR fail / low confidence / missing fields |
-| **Policy Interpretation** | claim, extracted_data, missing_docs | Coverage scope, mandatory docs, coverage limits, 30-day reporting window, exclusions | `PolicyResult` (Covered / Not Covered / Manual Review), policy sections, explanation | Missing docs, amount over limit, exclusions, late reporting |
-| **Fraud Detection** | claim, extracted_data, policy_result | Policy-defined rules + semantic similarity to historical fraud cases | `FraudAssessment` (LOW/MEDIUM/HIGH, score, indicators, LLM explanation) | High risk or similarity ≥ 0.85 |
-| **Escalation Decision** | claim, policy_result, fraud_assessment | Combines coverage + fraud signals into a single recommendation | `EscalationDecision` (Continue / Escalate), next_step, rationale | Any High fraud risk, uncertain coverage |
+### Safety Gates (`regulatory/confidence.py` — single source of truth)
 
-### Orchestrator Flow
+| Constant | Value | Meaning |
+|----------|-------|---------|
+| `NO_ANSWER_SIM_THRESHOLD` | 0.45 | Below this top-1 similarity the LLM is **never called** — "Information not found" |
+| `ESCALATE_CONFIDENCE_THRESHOLD` | 0.55 | Below this combined confidence, answers are escalated to a human reviewer |
+| `CONFIDENT_THRESHOLD` | 0.75 | At/above this combined confidence the answer is delivered as `High` |
+| `CONFLICT_LOW` / `CONFLICT_HIGH` | 0.70 / 0.95 | Cross-document pairwise-similarity band treated as a possible contradiction |
 
+**Confidence model:**
 ```
-process_claim(claim, file_paths, document_types):
-  1. document_agent.process(each file)      → extracted data + validation
-  2. Merge extracted data across documents  → ClaimExtractedData
-  3. policy_agent.interpret_coverage(...)   → coverage status + policy sections
-  4. fraud_agent.evaluate(...)              → fraud level + similarity score
-  5. escalation_agent.decide(...)           → next_step + requires_human_review
-  6. Store results in DB metadata
-  7. If escalation.requires_human_review → status = MANUAL_REVIEW (HITL)
-  8. Officer Accept / Reject → recorded in audit trail
+retrieval_confidence = top-1 cosine similarity
+combined_confidence  = 0.6 × retrieval_confidence + 0.4 × llm_confidence
+confidence_level     = High (≥0.75) | Medium (≥0.55) | Low
 ```
+
+### Escalation logic (internal track)
+
+`needs_escalation = true` when any of the following holds:
+
+| Condition | Escalation reason |
+|-----------|-------------------|
+| Retrieval below floor | No relevant regulatory clause retrieved (similarity below threshold) |
+| `not_supported` / empty answer | The retrieved clauses do not support an answer |
+| Cross-document contradiction | Possible contradiction between retrieved clauses; requires human adjudication |
+| Ungrounded citation(s) | One or more citations could not be grounded in retrieved clauses |
+| Combined confidence < 0.55 | Answer confidence below escalation threshold; requires compliance review |
+| No citations produced | No verifiable citations produced; requires compliance review |
+
+### Citation grounding
+
+The LLM is instructed to cite each clause with its `[ID:...]` token and a verbatim `quote`. The copilot validates that **every** citation references a chunk that was actually retrieved:
+
+- If the ID matches a retrieved chunk → `grounded: true`.
+- If the ID is unknown but a retrieved chunk matches `(document, clause_ref)` → the citation is corrected to that chunk.
+- If neither matches → `grounded: false` and the answer is escalated.
+
+### Two-track separation
+
+- The **internal** track returns `retrieved` (full excerpts + similarities) for traceability.
+- The **customer** track always serializes `retrieved: []` and adds a standard disclaimer; complex/conflicting questions are redirected to a bank official. Internal terminology, circular numbers, and scores never reach the customer.
 
 ---
 
 ## 4. RAG Pipeline
 
 ```
-Policy Document (data/policies/insurance_policy.txt)
+Approved Regulatory Documents
         │
         ▼
-┌──────────────┐
-│   Chunker    │  Split by "Section N - Title" pattern
-│  (regex)     │  Each section = 1 chunk
-└──────┬───────┘
+┌──────────────────┐
+│  Chunker         │  Header metadata + clause-level split
+│  (regulatory/    │  "1.", "1.1", "2.4" → 1 chunk per clause
+│   chunker.py)    │
+└──────┬───────────┘
        │
        ▼
-┌──────────────┐
-│   Embedder   │  SentenceTransformer('all-MiniLM-L6-v2')
-│              │  384-dimensional embeddings
-└──────┬───────┘
+┌──────────────────┐
+│  Embedder        │  SentenceTransformer('all-MiniLM-L6-v2')
+│  (regulatory/    │  384-dim, L2-normalized (cosine ≈ L2)
+│   embedder.py)   │
+└──────┬───────────┘
        │
        ▼
-┌──────────────┐
-│  FAISS Index │  IndexFlatL2 (L2 distance ≈ cosine similarity)
-│              │  Saved to data/indexes/faiss_index.bin
-└──────┬───────┘
+┌──────────────────┐
+│  FAISS Index     │  IndexFlatL2 → data/indexes/regulatory_index.bin
+│  (store.py)      │  + manifest sidecar regulatory_chunks.json
+└──────┬───────────┘
        │
   ┌────┴────┐
   │  Query  │
   └────┬────┘
        │
        ▼
-┌──────────────┐
-│  Retriever   │  embed_query → FAISS.search(k=5) → return chunks
-└──────┬───────┘
+┌──────────────────┐
+│  Retriever       │  embed_query → FAISS.search(k=4)
+│  (store.py)      │  similarity = 1 - distance²/2  (normalized vectors)
+└──────┬───────────┘
        │
        ▼
-┌──────────────┐
-│  LLM Prompt  │  Template {context} + {question} → LLM → Response
-└──────────────┘
+┌──────────────────┐
+│  LLM Prompt      │  {context} + {question} → strict JSON answer
+│  (prompts/)      │  with citations + confidence
+└──────────────────┘
 ```
 
-### RAG Configuration
+### Chunking strategy
+
+A regulatory document starts with a `Key: Value` header and is followed by numbered clauses:
+
+```
+Circular No: RBI/2025-26/09
+Date: 01-Aug-2025
+Subject: Master Direction - Know Your Customer (KYC)
+Version: v1.0
+Category: circular
+
+1. Applicability
+These directions apply to all banks.
+
+1.1 Customer Due Diligence
+Identity shall be verified using an officially valid document.
+```
+
+Each clause (`1.`, `1.1`, ...) becomes one chunk carrying full traceability metadata: `chunk_id`, `clause_ref`, `document_id`, `title`, `circular_no`, `issue_date`, `version`. Prose lines like `5 years` are never treated as clauses (clause detection requires an uppercase heading word).
+
+### Embedding details
 
 ```python
-# rag/pipeline.py
-EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"  # 384-dim
-INDEX_TYPE = "IndexFlatL2"                                   # L2 distance
-CHUNK_PATTERN = r"(Section \d+ - .+)"                       # Split by section
-TOP_K = 5                                                    # Retrieve top-5 chunks
-INDEX_PATH = "data/indexes/faiss_index.bin"
+# regulatory/embedder.py
+from sentence_transformers import SentenceTransformer
+model = SentenceTransformer("all-MiniLM-L6-v2")   # 384-dim, 22M params
+# embeddings are L2-normalized → FAISS L2 distance maps to cosine similarity:
+#   cosine ≈ 1 - distance² / 2
 ```
-
-> Graceful degradation: if `faiss` / `sentence-transformers` are not installed, the policy and fraud services fall back to rule-based logic so the platform remains fully functional; semantic similarity is simply omitted.
 
 ---
 
-## 5. Security & Compliance
+## 5. Security, Audit & Compliance
 
-### Authentication & Authorization
+### Authentication
 
 ```
-┌────────────────────────────────────────────────────────────────┐
-│  AUTH FLOW                                                     │
-│                                                                │
-│  1. POST /api/auth/register → user created in SQLite           │
-│  2. POST /api/auth/login    → JWT issued                       │
-│  3. Protected /api/* routes → JWT verified                     │
-│  4. Role-based access:                                         │
-│     - customer: own claims, submit claim, chat                 │
-│     - officer:  claims queue, document review, accept/reject   │
-│     - admin:    audit logs, user management, policy documents  │
-└────────────────────────────────────────────────────────────────┘
+1. POST /api/auth/register → user created in SQLite (password SHA-256)
+2. POST /api/auth/login    → opaque token issued, role set by portalType
+3. Portal selection drives UI:
+   - officer  → Compliance Query / Regulatory Corpus / Audit Ledger / Admin
+   - customer → Regulatory Transparency Assistant
 ```
 
-### Audit Trail
+### Audit trail
 
-Every state-changing action is logged via `AuditService`:
+Every query, ingest, and archive action is written to the immutable `audit_logs` table:
 
-| Field       | Description                                     |
-|-------------|-------------------------------------------------|
-| timestamp   | When the action occurred                        |
-| actor       | Who performed the action                        |
-| eventType   | e.g., "Claims Officer Acceptance", "Fraud Screening" |
-| riskLevel   | INFO / WARNING / ERROR                          |
-| details     | Structured payload with full context            |
+| Field | Description |
+|-------|-------------|
+| `id` | Unique log id (`LOG-<hex>`) |
+| `timestamp` | When the action occurred |
+| `actor` | Who/what performed the action |
+| `eventType` | e.g. `Regulatory Query`, `Regulatory Document Ingest` |
+| `riskLevel` | `low` / `medium` / `high` (escalated queries are `high`) |
+| `details` | Structured payload with the question/action context |
 
-### Ethical Controls
+Risk leveling: internal queries that need escalation are logged as `high`; customer queries and routine operations are `low`; document archive is `medium`.
 
-- **Never accuse** — flagged claims are described as "undergoing additional verification", never as fraud.
-- **Explain without exposing internals** — customer/officer explanations reference policy sections and reasons, not raw fraud scores or agent internals.
-- **HITL** — the escalation agent can only *recommend*; the final decision is always a human claim officer's.
-- **Rules from the policy document** — all thresholds are parsed from `insurance_policy.txt`, keeping behavior auditable and consistent.
+### Compliance controls
+
+- **Silence over hallucination** — below the retrieval floor the LLM is never invoked; unsupported questions return an explicit not-found message.
+- **Grounded citations only** — every citation must point to a clause actually retrieved; ungrounded citations force escalation.
+- **Contradiction detection** — cross-document conflicts are surfaced for human adjudication instead of the AI picking a side.
+- **Human-in-the-loop** — the copilot can only recommend escalation; low-confidence, conflicting, or unsupported answers always reach a compliance officer.
+- **Approved-corpus-only** — the LLM is constrained to the retrieved context and must not use outside knowledge or add legal interpretation.
+- **Customer redaction** — internal retrieval details and circular numbers are never exposed on the customer track.
 
 ---
 
 ## 6. ML & NLP Concepts
 
-| Concept                | Implementation                                               |
-|------------------------|--------------------------------------------------------------|
-| **Supervised ML**      | Intent classification (joblib model + insurance keyword fallback) |
-| **Embeddings**         | SentenceTransformer (all-MiniLM-L6-v2) → 384-dim vectors     |
-| **Vector Search**      | FAISS IndexFlatL2 (L2 distance ≈ cosine similarity)          |
-| **RAG Pipeline**       | Chunk → Embed → Index → Retrieve → Augment → Generate        |
-| **Agent Workflow**     | 4 specialized agents coordinated by the orchestrator         |
-| **HITL**               | Human decision required for high fraud risk / uncertain coverage |
-| **Prompt Personas**    | Customer advisory, compliance, fraud explainer, policy checker, document validator |
-| **Similarity Search**  | Historical fraud case corpus scored per claim (0–1 similarity) |
-
-### Embedding Details
-
-```python
-# rag/embedder.py
-from sentence_transformers import SentenceTransformer
-
-model = SentenceTransformer('all-MiniLM-L6-v2')
-# Output: 384-dimensional dense vector
-# Model: 6-layer transformer, 22M parameters
-# Distance: IndexFlatL2 (L2 distance ≈ cosine for unit vectors)
-```
+| Concept | Implementation |
+|---------|----------------|
+| **Embeddings** | SentenceTransformer (all-MiniLM-L6-v2) → 384-dim L2-normalized vectors |
+| **Vector Search** | FAISS IndexFlatL2 (cosine ≈ L2 on normalized vectors) |
+| **RAG Pipeline** | Clause-chunk → embed → index → retrieve → augment → generate |
+| **Versioned Store** | sha256 file hashes + manifest sidecar; rebuilds only on change |
+| **Confidence Gating** | Retrieval floor + combined confidence + escalation thresholds |
+| **Citation Grounding** | Every citation validated against the retrieved chunk set |
+| **Contradiction Detection** | Cross-document pairwise similarity in a conflict band |
+| **Two-track generation** | Compliance persona vs plain-language transparency persona |
+| **HITL** | Low-confidence / conflicting / unsupported answers → compliance review |
 
 ---
 
-## 7. Fraud Classification
+## 7. Key Design Decisions
 
-```
-                    FRAUD LEVELS
-                    ────────────
+### "Silence is better than hallucination"
 
-    LOW                    MEDIUM                    HIGH
-┌──────────────┐    ┌──────────────┐    ┌──────────────┐
-│ Consistent   │    │ Claim amount │    │ 3+ indicators│
-│ details      │    │ exceeds      │    │ triggered    │
-│              │    │ coverage     │    │              │
-│ No pattern   │    │ limit        │    │ Semantic     │
-│ similarity   │    │              │    │ similarity   │
-│              │    │ Recent       │    │ ≥ 0.85       │
-│ Amount within│    │ inception    │    │              │
-│ coverage     │    │ (≤ 14 days)  │    │              │
-│              │    │ Missing docs │    │              │
-│              │    │              │    │              │
-│              │    │ Similarity   │    │              │
-│              │    │ 0.70–0.85    │    │              │
-├──────────────┤    ├──────────────┤    ├──────────────┤
-│ Continue     │    │ Review /     │    │ Mandatory    │
-│ processing   │    │ request docs │    │ Manual       │
-│              │    │              │    │ Review       │
-└──────────────┘    └──────────────┘    └──────────────┘
-```
+The copilot is designed for a domain where a confident-but-wrong answer is worse than no answer. It refuses below the retrieval floor, refuses when clauses don't support an answer, and escalates whenever it cannot fully verify its output.
 
-| Similarity | Classification | Action |
-|-----------|----------------|--------|
-| ≥ 0.85     | High           | Always escalated to human review |
-| ≥ 0.70     | Medium         | Review recommended |
-| < 0.70     | Low            | Continue normal processing |
+### Rules live in one place
 
----
+All thresholds live in `regulatory/confidence.py` as named constants — the behaviour ("no answer" vs answer vs escalate) is explicit, explainable, and auditable.
 
-## 8. Prompt Personas
+### The index is a derived artifact
 
-| Persona              | Tone              | Behavior                                   |
-|----------------------|-------------------|--------------------------------------------|
-| **Customer Advisory** | Polite, simple    | Explains claims in plain language, never promises payouts |
-| **Strict Compliance** | Formal, regulatory | Policy-only answers, never guesses         |
-| **Fraud Explainer**   | Analytical        | Explains risk factors, never changes score |
-| **Policy Checker**    | Precise, strict   | Checks coverage using only policy context  |
-| **Document Validator**| Factual, concise  | Extracts only explicitly present info      |
+The FAISS index and chunk manifest are always reproducible from `data/regulatory/`. There is no manually maintained vector store; ingestion, registry, and indexing are one pipeline.

@@ -1,8 +1,0 @@
-CASE_ID: FC-005
-CASE_TYPE: Health
-FRAUD_LEVEL: Medium
-FRAUD_INDICATORS: pre-existing condition; misdeclaration; record manipulation
-RESOLUTION: Denied; policy reinstated under original terms
-
-NARRATIVE:
-The claimant filed a health insurance claim for a surgical procedure related to a chronic condition. Medical history obtained from the treating hospital showed consultations for the same condition occurring before the policy inception date. The application questionnaire had answered "No" to the pre-existing condition question. Dates on the prescription records had been manually altered. The claim amount was within limits, but the misdeclaration of a pre-existing condition triggered a fraud review.

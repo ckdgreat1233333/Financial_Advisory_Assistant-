@@ -1,8 +1,0 @@
-CASE_ID: FC-001
-CASE_TYPE: Health
-FRAUD_LEVEL: High
-FRAUD_INDICATORS: staged medical procedure; inflated treatment cost; collusion with provider
-RESOLUTION: Denied after investigation; provider network flagged
-
-NARRATIVE:
-The policyholder filed a health insurance claim within ten days of buying the policy. The claimed treatment cost was more than three times the coverage limit for day-care procedures. The medical report was issued by a clinic that had been flagged in two earlier fraud investigations. The diagnosis history contradicted the patient records on file, and multiple invoices contained duplicate line items. The claim was filed immediately after the waiting period, and the patient had no prior consultation records with the attending physician.

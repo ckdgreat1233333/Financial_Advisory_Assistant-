@@ -1,14 +1,13 @@
 """
-SQLite persistence layer for Insurance Claims Intelligence Platform.
-Stores users, claims, fraud cases, policy docs, and audit logs.
+SQLite persistence layer for the Regulatory & Compliance Copilot.
+Stores users, audit logs, and the version-controlled regulatory corpus registry.
 """
 import sqlite3
-import json
 import os
 from datetime import datetime
 from typing import Optional
 
-DB_PATH = os.path.join(os.path.dirname(__file__), "data", "insurance_claim.db")
+DB_PATH = os.path.join(os.path.dirname(__file__), "data", "regulatory_copilot.db")
 
 
 def get_db():
@@ -30,43 +29,6 @@ def init_db():
             password TEXT NOT NULL,
             role TEXT DEFAULT 'customer'
         );
-        CREATE TABLE IF NOT EXISTS applications (
-            id TEXT PRIMARY KEY,
-            customer_name TEXT NOT NULL,
-            applicant_email TEXT DEFAULT '',
-            customer_phone TEXT DEFAULT '',
-            loan_type TEXT NOT NULL,
-            loan_amount REAL NOT NULL,
-            term_months INTEGER DEFAULT 12,
-            interest_rate REAL DEFAULT 8.5,
-            submitted_date TEXT DEFAULT (date('now')),
-            status TEXT DEFAULT 'PENDING',
-            created_at TEXT DEFAULT (datetime('now')),
-            metadata TEXT DEFAULT '{}'
-        );
-        CREATE TABLE IF NOT EXISTS claims (
-            id TEXT PRIMARY KEY,
-            claimant_name TEXT NOT NULL,
-            claimant_email TEXT DEFAULT '',
-            claimant_phone TEXT DEFAULT '',
-            policy_number TEXT DEFAULT '',
-            claim_type TEXT NOT NULL,
-            claim_amount REAL NOT NULL,
-            incident_date TEXT DEFAULT '',
-            submitted_date TEXT DEFAULT (date('now')),
-            status TEXT DEFAULT 'RECEIVED',
-            created_at TEXT DEFAULT (datetime('now')),
-            metadata TEXT DEFAULT '{}'
-        );
-        CREATE TABLE IF NOT EXISTS fraud_cases (
-            id TEXT PRIMARY KEY,
-            case_id TEXT NOT NULL,
-            case_type TEXT NOT NULL,
-            fraud_level TEXT NOT NULL,
-            narrative TEXT DEFAULT '',
-            fraud_indicators TEXT DEFAULT '',
-            resolution TEXT DEFAULT ''
-        );
         CREATE TABLE IF NOT EXISTS audit_logs (
             id TEXT PRIMARY KEY,
             timestamp TEXT DEFAULT (datetime('now')),
@@ -75,18 +37,22 @@ def init_db():
             riskLevel TEXT DEFAULT 'low',
             details TEXT DEFAULT ''
         );
-        CREATE TABLE IF NOT EXISTS policy_docs (
-            id TEXT PRIMARY KEY,
-            name TEXT NOT NULL,
-            version TEXT DEFAULT 'v1.0',
-            status TEXT DEFAULT 'active',
-            uploadDate TEXT DEFAULT (date('now')),
-            activeRules INTEGER DEFAULT 0
-        );
         CREATE TABLE IF NOT EXISTS faq (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             question TEXT NOT NULL,
             answer TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS regulatory_docs (
+            doc_id TEXT PRIMARY KEY,
+            title TEXT NOT NULL,
+            circular_no TEXT DEFAULT '',
+            issue_date TEXT DEFAULT '',
+            version TEXT DEFAULT 'v1.0',
+            category TEXT DEFAULT 'circular',
+            file_path TEXT DEFAULT '',
+            file_hash TEXT DEFAULT '',
+            status TEXT DEFAULT 'active',
+            ingested_at TEXT DEFAULT (datetime('now'))
         );
     """)
     conn.commit()
@@ -153,101 +119,12 @@ def delete_user(username: str) -> bool:
     return cur.rowcount > 0
 
 
-# ─── Claims ───
-
-def list_claims(email: str = "", status: str = "", search: str = "") -> list:
-    conn = get_db()
-    query = "SELECT * FROM claims WHERE 1=1"
-    params = []
-    if email:
-        query += " AND claimant_email=?"
-        params.append(email)
-    if status:
-        query += " AND status=?"
-        params.append(status)
-    if search:
-        query += " AND (claimant_name LIKE ? OR id LIKE ?)"
-        params.extend([f"%{search}%", f"%{search}%"])
-    rows = conn.execute(query + " ORDER BY created_at DESC", params).fetchall()
-    conn.close()
-    return [dict(r) for r in rows]
-
-
-def get_claim(claim_id: str) -> Optional[dict]:
-    conn = get_db()
-    row = conn.execute("SELECT * FROM claims WHERE id=?", (claim_id,)).fetchone()
-    conn.close()
-    return dict(row) if row else None
-
-
-def save_claim(claim_id: str, claimant_name: str, claimant_email: str, claimant_phone: str,
-               policy_number: str, claim_type: str, claim_amount: float, incident_date: str = "",
-               status: str = "RECEIVED", metadata: str = "{}"):
-    conn = get_db()
-    conn.execute(
-        """INSERT OR REPLACE INTO claims
-           (id, claimant_name, claimant_email, claimant_phone, policy_number,
-            claim_type, claim_amount, incident_date, status, metadata)
-           VALUES (?,?,?,?,?,?,?,?,?,?)""",
-        (claim_id, claimant_name, claimant_email, claimant_phone, policy_number,
-         claim_type, claim_amount, incident_date, status, metadata)
-    )
-    conn.commit()
-    conn.close()
-
-
-def update_claim(claim_id: str, status: str, metadata: str = None):
-    conn = get_db()
-    conn.execute("UPDATE claims SET status=?, metadata=? WHERE id=?", (status, metadata or "{}", claim_id))
-    conn.commit()
-    conn.close()
-
-
-# ─── Fraud Cases ───
-
-def list_fraud_cases() -> list:
-    conn = get_db()
-    rows = conn.execute("SELECT * FROM fraud_cases ORDER BY case_id").fetchall()
-    conn.close()
-    return [dict(r) for r in rows]
-
-
-def save_fraud_case(case_id: str, case_type: str, fraud_level: str, narrative: str,
-                    fraud_indicators: str = "", resolution: str = ""):
-    conn = get_db()
-    conn.execute(
-        "INSERT OR REPLACE INTO fraud_cases (id, case_id, case_type, fraud_level, narrative, fraud_indicators, resolution) "
-        "VALUES (?,?,?,?,?,?,?)",
-        (case_id, case_id, case_type, fraud_level, narrative, fraud_indicators, resolution)
-    )
-    conn.commit()
-    conn.close()
-
-
-def seed_fraud_cases(cases: list):
-    conn = get_db()
-    existing = conn.execute("SELECT COUNT(*) as c FROM fraud_cases").fetchone()["c"]
-    if existing == 0:
-        for c in cases:
-            conn.execute(
-                "INSERT OR REPLACE INTO fraud_cases (id, case_id, case_type, fraud_level, narrative, fraud_indicators, resolution) "
-                "VALUES (?,?,?,?,?,?,?)",
-                (c["id"], c["id"], c["case_type"], c["fraud_level"], c["narrative"],
-                 c.get("fraud_indicators", ""), c.get("resolution", ""))
-            )
-        conn.commit()
-    conn.close()
-
-
 # ─── Audit Logs ───
 
-def list_audit_logs(application_id: str = "", risk_level: str = "") -> list:
+def list_audit_logs(risk_level: str = "") -> list:
     conn = get_db()
     query = "SELECT * FROM audit_logs WHERE 1=1"
     params = []
-    if application_id:
-        query += " AND details LIKE ?"
-        params.append(f"%{application_id}%")
     if risk_level:
         query += " AND riskLevel=?"
         params.append(risk_level)
@@ -271,37 +148,6 @@ def get_audit_log(entry_id: str) -> Optional[dict]:
     row = conn.execute("SELECT * FROM audit_logs WHERE id=?", (entry_id,)).fetchone()
     conn.close()
     return dict(row) if row else None
-
-
-# ─── Policy Docs ───
-
-def list_policy_docs() -> list:
-    conn = get_db()
-    rows = conn.execute("SELECT * FROM policy_docs ORDER BY uploadDate DESC").fetchall()
-    conn.close()
-    return [dict(r) for r in rows]
-
-
-def create_policy_doc(doc_id: str, name: str, version: str, status: str = "active",
-                      upload_date: str = "", active_rules: int = 0):
-    if not upload_date:
-        upload_date = datetime.now().strftime("%Y-%m-%d")
-    conn = get_db()
-    conn.execute(
-        "INSERT INTO policy_docs (id, name, version, status, uploadDate, activeRules) VALUES (?,?,?,?,?,?)",
-        (doc_id, name, version, status, upload_date, active_rules)
-    )
-    conn.commit()
-    conn.close()
-
-
-def delete_policy_doc(doc_id: str) -> bool:
-    conn = get_db()
-    cur = conn.execute("DELETE FROM policy_docs WHERE id=?", (doc_id,))
-    deleted = cur.rowcount > 0
-    conn.commit()
-    conn.close()
-    return deleted
 
 
 # ─── FAQ ───
@@ -331,44 +177,62 @@ def seed_faq():
     existing = conn.execute("SELECT COUNT(*) as c FROM faq").fetchone()["c"]
     if existing == 0:
         faqs = [
-            ("What documents do I need to file a claim?", "You need three mandatory documents: (1) Signed Claim Form, (2) Policy Document, (3) Proof of Loss statement. Additional documents depend on the claim type — medical reports for health, police reports for theft or accidents, and invoices for property damage."),
-            ("How does the AI process my claim?", "Our system uses four AI agents: Document Validation Agent checks your submitted documents, Policy Interpretation Agent checks whether the claim is covered, Fraud Detection Agent screens against historical patterns, and Escalation Decision Agent decides whether a claim officer needs to review. Each agent provides a score and recommendation."),
-            ("What do the fraud risk levels mean?", "Low Risk: Claim details consistent, amount within limits, no pattern similarity. Medium Risk: Minor inconsistencies or claim filed shortly after policy purchase. High Risk: Multiple inconsistencies or strong similarity to historical fraud patterns — this always requires a claim officer's review."),
-            ("How long does claim processing take?", "Document validation completes in minutes. Coverage review and fraud screening take 1-2 business days. Final claim officer decision follows within 24 hours of review completion."),
-            ("Is my data secure?", "All documents are encrypted at rest and in transit. Access is role-based and all actions are logged in an immutable audit trail."),
-            ("Why was my claim rejected?", "Common reasons: the event is excluded by the policy, the claim was filed after the reporting window, documents are missing, or the claim amount exceeds coverage. A claim officer can share the specific reasons for your claim."),
+            ("What documents are accepted for KYC?", "An officially valid document such as a passport, driving licence, Voter ID, Aadhaar card or NREGA job card is accepted for individual identity verification."),
+            ("How often do I need to update my KYC?", "Low risk customers must update KYC at least once every ten years. Medium and high risk customers must update at least once every eight years."),
+            ("Why has my account been restricted?", "If KYC records are not updated within the stipulated period, the bank may restrict the operation of the account. Please visit a branch to complete the updation."),
+            ("How are account charges disclosed?", "Banks are required to display a schedule of charges and to notify customers of any change in charges before they take effect."),
+            ("How do I file a complaint?", "You can register a complaint with the bank's internal grievance cell, which must acknowledge it promptly and resolve it within the prescribed timeline."),
+            ("What happens if I am not satisfied with the bank's response?", "If your complaint is not resolved satisfactorily, you may escalate it to the Banking Ombudsman within the prescribed period after exhausting the bank's internal grievance mechanism."),
         ]
         conn.executemany("INSERT INTO faq (question, answer) VALUES (?,?)", faqs)
         conn.commit()
     conn.close()
 
 
-def seed_policy_docs():
+# ─── Regulatory Docs (version-controlled knowledge store) ───
+
+def list_regulatory_docs() -> list:
     conn = get_db()
-    existing = conn.execute("SELECT COUNT(*) as c FROM policy_docs").fetchone()["c"]
-    if existing == 0:
-        docs = [
-            ("pol-1", "Motor Insurance Claim Guidelines", "v4.2", "active", "2023-08-15", 42),
-            ("pol-2", "Health Insurance Coverage Rules", "v3.0", "active", "2023-09-01", 36),
-            ("pol-3", "Property & Fire Claim Policy", "v2.5", "active", "2023-07-20", 28),
-            ("pol-4", "Fraud Detection Framework", "v1.9", "archived", "2022-12-10", 18),
-        ]
-        conn.executemany(
-            "INSERT INTO policy_docs (id, name, version, status, uploadDate, activeRules) VALUES (?,?,?,?,?,?)",
-            docs
-        )
-        conn.commit()
+    rows = conn.execute("SELECT * FROM regulatory_docs ORDER BY ingested_at DESC").fetchall()
     conn.close()
+    return [dict(r) for r in rows]
+
+
+def get_regulatory_doc(doc_id: str) -> Optional[dict]:
+    conn = get_db()
+    row = conn.execute("SELECT * FROM regulatory_docs WHERE doc_id=?", (doc_id,)).fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+
+def upsert_regulatory_doc(doc_id: str, title: str, circular_no: str = "", issue_date: str = "",
+                          version: str = "v1.0", category: str = "circular",
+                          file_path: str = "", file_hash: str = "") -> None:
+    conn = get_db()
+    conn.execute(
+        """INSERT INTO regulatory_docs
+           (doc_id, title, circular_no, issue_date, version, category, file_path, file_hash)
+           VALUES (?,?,?,?,?,?,?,?)
+           ON CONFLICT(doc_id) DO UPDATE SET
+             title=excluded.title, circular_no=excluded.circular_no,
+             issue_date=excluded.issue_date, version=excluded.version,
+             category=excluded.category, file_path=excluded.file_path,
+             file_hash=excluded.file_hash,
+             ingested_at=datetime('now')""",
+        (doc_id, title, circular_no, issue_date, version, category, file_path, file_hash)
+    )
+    conn.commit()
+    conn.close()
+
+
+def delete_regulatory_doc(doc_id: str) -> bool:
+    conn = get_db()
+    cur = conn.execute("DELETE FROM regulatory_docs WHERE doc_id=?", (doc_id,))
+    conn.commit()
+    conn.close()
+    return cur.rowcount > 0
 
 
 # Initialize on import
 init_db()
-# Migrate existing DB if needed
-conn = get_db()
-try:
-    conn.execute("ALTER TABLE applications ADD COLUMN applicant_email TEXT DEFAULT ''")
-except sqlite3.OperationalError:
-    pass
-conn.close()
 seed_faq()
-seed_policy_docs()
