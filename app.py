@@ -1,45 +1,44 @@
 """
-Regulatory & Compliance Copilot - Backend API
----------------------------------------------
-Banking domain. Grounded answers to RBI circulars and internal compliance
-policies via RAG with strict hallucination prevention, citation enforcement,
-confidence scoring, and human-in-the-loop escalation.
+Personalized Financial Advisory Assistant - Backend API
+-------------------------------------------------------
+Banking domain. Supports relationship managers (business track) and customers
+(customer track) with responsible, explainable, compliance-aligned GenAI.
 
-Two response layers:
-  - Internal track (compliance & audit teams) - citations + escalation.
-  - Customer track (transparency assistant)  - plain language + disclaimer.
+Recommendation logic:
+  - Deterministic suitability engine decides (guardrails against mis-selling)
+  - Product knowledge RAG grounds every explanation
+  - LLM only verbalizes engine output, never invents products
 """
-from fastapi import FastAPI, File, UploadFile, Form, HTTPException, Request
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
-from typing import List, Optional
-import uuid, os, hashlib, secrets, shutil, logging
-from datetime import datetime
+from typing import Optional
+import uuid, os, hashlib, secrets, logging
 
 from services.llm_service import LLMService
-from services.regulatory_copilot import RegulatoryCopilot
-from utils.enums import AuditSeverity
 
 import database as db
 
 logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger("regulatory_copilot")
+logger = logging.getLogger("advisory")
 
-app = FastAPI(title="Regulatory & Compliance Copilot",
-              description="Grounded regulatory QA over RBI circulars and internal policies for banking compliance teams and customers",
-              version="1.0.0")
+app = FastAPI(title="Personalized Financial Advisory Assistant",
+              description="Responsible, explainable, compliance-aligned financial advisory "
+                          "for relationship managers and customers (banking domain)",
+              version="2.0.0")
 
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=False,
                    allow_methods=["*"], allow_headers=["*"])
 
 llm_service = LLMService()
 
+advisory_service = None
 try:
-    regulatory_copilot = RegulatoryCopilot()
+    from services.advisory_service import AdvisoryService
+    advisory_service = AdvisoryService()
 except Exception as exc:
-    logger.warning(f"Regulatory copilot unavailable: {exc}")
-    regulatory_copilot = None
+    logger.warning(f"Advisory service unavailable: {exc}")
 
 # ─── Auth helpers ───
 def _hash_pw(p: str) -> str: return hashlib.sha256(p.encode()).hexdigest()
@@ -47,7 +46,7 @@ def _verify_pw(p: str, h: str) -> bool: return _hash_pw(p) == h
 def _token() -> str: return f"tok-{secrets.token_hex(16)}"
 
 if not db.user_exists("admin"):
-    db.create_user("admin", "admin@bankreg.com", "Compliance Officer",
+    db.create_user("admin", "admin@bank.com", "Relationship Manager",
                    "+91 9876543210", _hash_pw("admin123"), "officer")
 
 # ─── Audit helper ───
@@ -67,11 +66,15 @@ class RegisterRequest(BaseModel):
     username: str; fullName: str; email: str; password: str; phone: Optional[str] = ""
     portalType: str = "customer"
 
-class ProfileUpdateRequest(BaseModel):
-    name: str; email: str; phone: str; username: Optional[str] = ""
-
-class RegulatoryQueryRequest(BaseModel):
+class RMAdvisoryRequest(BaseModel):
+    customer_id: str
     question: str
+
+class CustomerGoalRequest(BaseModel):
+    customer_id: str
+    goal: str = "wealth"
+    amount: Optional[float] = None
+    horizon_months: Optional[int] = None
 
 # ══════════════════════════════════════════════════
 # ROOT
@@ -83,10 +86,10 @@ async def root():
     if os.path.exists(idx):
         with open(idx, "r", encoding="utf-8") as f:
             return HTMLResponse(f.read())
-    return {"service": "Regulatory & Compliance Copilot", "version": "1.0.0"}
+    return {"service": "Personalized Financial Advisory Assistant", "version": "2.0.0"}
 
 # ══════════════════════════════════════════════════
-# AUTH
+# AUTH (role selection enables the two response flows)
 # ══════════════════════════════════════════════════
 
 @app.post("/api/auth/register")
@@ -98,8 +101,7 @@ async def register(req: RegisterRequest):
     db.create_user(req.username, req.email or "", req.fullName, req.phone or "",
                    _hash_pw(req.password), req.portalType)
     user = db.get_user(req.username)
-    db.create_audit_log(f"LOG-{uuid.uuid4().hex[:8]}", "System", "User Registration",
-                        f"New user registered: {req.username}")
+    _audit_entry("System", "User Registration", f"New user registered: {req.username}")
     return {"user": {k: v for k, v in user.items() if k != "password"}, "token": _token()}
 
 @app.post("/api/auth/login")
@@ -108,8 +110,7 @@ async def login(req: LoginRequest):
     if not user or not _verify_pw(req.password, user.get("password", "")):
         raise HTTPException(401, "Invalid username or password")
     user["role"] = req.portalType
-    db.create_audit_log(f"LOG-{uuid.uuid4().hex[:8]}", req.username, "User Login",
-                        f"User logged in as {req.portalType}")
+    _audit_entry(req.username, "User Login", f"User logged in as {req.portalType}")
     return {"user": {k: v for k, v in user.items() if k != "password"}, "token": _token()}
 
 @app.post("/api/auth/logout")
@@ -123,20 +124,8 @@ async def auth_me(username: str = ""):
         raise HTTPException(401, "Not authenticated")
     return {"user": {k: v for k, v in user.items() if k != "password"}}
 
-@app.get("/api/users")
-async def list_users():
-    return {"users": db.list_users()}
-
-@app.delete("/api/users/{username}")
-async def remove_user(username: str):
-    if not db.delete_user(username):
-        raise HTTPException(404, "User not found")
-    db.create_audit_log(f"LOG-{uuid.uuid4().hex[:8]}", "Admin", "User Deletion",
-                        f"User {username} removed")
-    return {"success": True}
-
 # ══════════════════════════════════════════════════
-# AUDIT LOGS
+# AUDIT LEDGER (accountability / human-in-the-loop evidence)
 # ══════════════════════════════════════════════════
 
 @app.get("/api/audit-logs")
@@ -145,132 +134,75 @@ async def list_audit_logs(riskLevel: str = ""):
     return {"logs": logs}
 
 # ══════════════════════════════════════════════════
-# USER PROFILE
+# PERSONALIZED FINANCIAL ADVISORY
 # ══════════════════════════════════════════════════
 
-@app.patch("/api/users/profile")
-async def update_profile(req: ProfileUpdateRequest):
-    user = db.get_user(req.username or req.email)
-    if not user:
-        raise HTTPException(404, "User not found")
-    db.update_user(req.username or req.email, req.name, req.phone)
-    return {"user": {"role": user.get("role", "customer"), "email": req.email,
-                     "name": req.name, "phone": req.phone}}
+@app.get("/api/advisory/customers")
+async def advisory_customers(search: str = ""):
+    return {"customers": db.list_customers(search=search)}
 
-# ══════════════════════════════════════════════════
-# FAQ
-# ══════════════════════════════════════════════════
 
-@app.get("/api/faq")
-async def get_faq(search: str = ""):
-    faqs = db.list_faqs(search=search)
-    return {"faqs": faqs}
+@app.get("/api/advisory/customers/{customer_id}/profile")
+async def advisory_customer_profile(customer_id: str):
+    if advisory_service is None:
+        raise HTTPException(503, "Advisory service unavailable")
+    try:
+        profile = advisory_service.get_profile(customer_id)
+    except ValueError as exc:
+        raise HTTPException(404, str(exc))
+    _audit_entry(customer_id, "Customer Profile View",
+                 f"Profile built for {customer_id}", "low")
+    return {"profile": profile.to_dict(), "summary": profile.summary_text()}
 
-# ══════════════════════════════════════════════════
-# REGULATORY & COMPLIANCE COPILOT
-# ══════════════════════════════════════════════════
 
-@app.post("/api/regulatory/query")
-async def regulatory_query(req: RegulatoryQueryRequest):
-    """Internal track - compliance & audit teams. Returns grounded answer
-    with citations, confidence score, and escalation recommendation."""
-    if regulatory_copilot is None:
-        raise HTTPException(503, "Regulatory copilot unavailable")
-    answer = regulatory_copilot.answer_internal(req.question)
-    payload = answer.to_dict(include_retrieved=True)
-    _audit_entry(req.question[:60] or "regulatory-query", "Regulatory Query",
-                 f"Internal query: {req.question[:120]}",
-                 "high" if answer.needs_escalation else "low")
+@app.post("/api/advisory/rm-query")
+async def advisory_rm_query(req: RMAdvisoryRequest):
+    """Business track - RM decision support. Profile summary, engine-scored
+    recommendations with reasoning, risk flags and escalation status."""
+    if advisory_service is None:
+        raise HTTPException(503, "Advisory service unavailable")
+    response = advisory_service.rm_query(req.customer_id, req.question, actor="rm")
+    payload = response.to_dict(include_retrieved=True)
+    _audit_entry(f"RM:{req.customer_id}", "RM Advisory Query",
+                 req.question[:160], "high" if response.needs_human_override else "low")
     return payload
 
-@app.post("/api/regulatory/customer-query")
-async def regulatory_customer_query(req: RegulatoryQueryRequest):
-    """Customer track - transparency assistant. Returns plain-language answer
-    with disclaimer. Internal retrieval details are never exposed."""
-    if regulatory_copilot is None:
-        raise HTTPException(503, "Regulatory copilot unavailable")
-    answer = regulatory_copilot.answer_customer(req.question)
-    payload = answer.to_dict(include_retrieved=False)
-    _audit_entry(req.question[:60] or "customer-regulatory-query", "Customer Regulatory Query",
-                 f"Customer query: {req.question[:120]}", "low")
+
+@app.post("/api/advisory/customer-goal")
+async def advisory_customer_goal(req: CustomerGoalRequest):
+    """Customer track - goal-based guidance. Plain language, disclaimers,
+    non-promissory enforcement; blocked/escalated products never shown."""
+    if advisory_service is None:
+        raise HTTPException(503, "Advisory service unavailable")
+    response = advisory_service.customer_goal(
+        req.customer_id, req.goal, amount=req.amount,
+        horizon_months=req.horizon_months, actor="customer")
+    payload = response.to_dict(include_retrieved=False)
+    _audit_entry(f"CU:{req.customer_id}", "Customer Goal Guidance",
+                 f"{req.goal} | amount={req.amount}", "low")
     return payload
 
-@app.get("/api/regulatory/documents")
-async def regulatory_documents():
-    """List the version-controlled regulatory corpus (approved documents)."""
-    return {"documents": db.list_regulatory_docs()}
 
-@app.post("/api/regulatory/documents")
-async def ingest_regulatory_document(
-    file: UploadFile = File(...),
-    title: str = Form(""),
-    circular_no: str = Form(""),
-    issue_date: str = Form(""),
-    version: str = Form(""),
-    category: str = Form("circular"),
-):
-    """Ingest a new approved regulatory document (txt / pdf / md).
+@app.get("/api/advisory/products")
+async def advisory_products():
+    conn = db.get_db()
+    rows = conn.execute("SELECT * FROM products ORDER BY risk_level, product_id").fetchall()
+    conn.close()
+    return {"products": [dict(r) for r in rows]}
 
-    The file is stored in the approved corpus directory and the FAISS index
-    is rebuilt so the copilot immediately answers from it.
-    """
-    if regulatory_copilot is None:
-        raise HTTPException(503, "Regulatory copilot unavailable")
 
-    fname = file.filename or "document.txt"
-    ext = os.path.splitext(fname)[1].lower()
-    if ext not in (".txt", ".pdf", ".md"):
-        raise HTTPException(400, "Only .txt, .pdf and .md files are supported")
+@app.get("/api/advisory/segments")
+async def advisory_segments():
+    if advisory_service is None:
+        raise HTTPException(503, "Advisory service unavailable")
+    from profiling.segmentation import get_segmenter
+    seg = get_segmenter()
+    return {"segments": seg.describe_segments()}
 
-    corpus_dir = regulatory_copilot.store.corpus_dir
-    os.makedirs(corpus_dir, exist_ok=True)
 
-    # Prefix the filename with a slug from the optional title to keep a stable doc_id.
-    doc_id = os.path.splitext(fname)[0].replace(" ", "_").lower()
-    dest = corpus_dir / f"{doc_id}{ext}"
-    with open(dest, "wb") as f:
-        shutil.copyfileobj(file.file, f)
-
-    # Rebuild the store from the corpus so the new document is retrievable.
-    regulatory_copilot.store.ingest()
-
-    row = db.get_regulatory_doc(doc_id)
-    if row and (title or circular_no or issue_date or version):
-        db.upsert_regulatory_doc(
-            doc_id=doc_id,
-            title=title or row["title"],
-            circular_no=circular_no or row["circular_no"],
-            issue_date=issue_date or row["issue_date"],
-            version=version or row["version"],
-            category=category or row["category"],
-            file_path=row["file_path"],
-            file_hash=row["file_hash"],
-        )
-        row = db.get_regulatory_doc(doc_id)
-
-    _audit_entry("Compliance Officer", "Regulatory Document Ingest",
-                 f"Document '{fname}' ingested into the regulatory corpus.", "low")
-    return {"document": row, "ingested": True}
-
-@app.delete("/api/regulatory/documents/{doc_id}")
-async def delete_regulatory_document(doc_id: str):
-    """Remove a document from the approved corpus and rebuild the index."""
-    if regulatory_copilot is None:
-        raise HTTPException(503, "Regulatory copilot unavailable")
-
-    row = db.get_regulatory_doc(doc_id)
-    if not row:
-        raise HTTPException(404, "Regulatory document not found")
-
-    file_path = row.get("file_path", "")
-    if file_path and os.path.exists(file_path):
-        os.remove(file_path)
-
-    db.delete_regulatory_doc(doc_id)
-    regulatory_copilot.store.ingest()
-    _audit_entry("Compliance Officer", "Regulatory Document Archived",
-                 f"Document '{doc_id}' archived from the regulatory corpus.", "medium")
-    return {"success": True}
+@app.get("/api/advisory/sessions")
+async def advisory_sessions(limit: int = 50):
+    return {"sessions": db.list_advisory_sessions(limit=limit)}
 
 if __name__ == "__main__":
     import uvicorn

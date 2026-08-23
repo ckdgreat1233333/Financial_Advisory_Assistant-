@@ -1,13 +1,19 @@
 """
-SQLite persistence layer for the Regulatory & Compliance Copilot.
-Stores users, audit logs, and the version-controlled regulatory corpus registry.
+SQLite persistence layer for the Personalized Financial Advisory Assistant.
+Stores users, audit logs, synthetic banking data (customers, transactions),
+the product catalog, and the advisory session audit trail.
 """
 import sqlite3
 import os
+import csv
 from datetime import datetime
 from typing import Optional
 
-DB_PATH = os.path.join(os.path.dirname(__file__), "data", "regulatory_copilot.db")
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DB_PATH = os.path.join(os.path.dirname(__file__), "data", "advisory.db")
+CUSTOMERS_CSV = os.path.join(BASE_DIR, "data", "customers", "customers.csv")
+TRANSACTIONS_CSV = os.path.join(BASE_DIR, "data", "customers", "transactions.csv")
+PRODUCTS_CSV = os.path.join(BASE_DIR, "data", "products", "products.csv")
 
 
 def get_db():
@@ -37,25 +43,122 @@ def init_db():
             riskLevel TEXT DEFAULT 'low',
             details TEXT DEFAULT ''
         );
-        CREATE TABLE IF NOT EXISTS faq (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            question TEXT NOT NULL,
-            answer TEXT NOT NULL
+        CREATE TABLE IF NOT EXISTS customers (
+            customer_id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            age INTEGER,
+            gender TEXT,
+            city TEXT,
+            occupation TEXT,
+            employment_type TEXT,
+            annual_income REAL,
+            monthly_income REAL,
+            marital_status TEXT,
+            dependents INTEGER DEFAULT 0,
+            kyc_status TEXT DEFAULT 'verified',
+            stated_risk_appetite TEXT,
+            investment_horizon_months INTEGER,
+            goals TEXT DEFAULT '',
+            onboard_date TEXT,
+            savings_balance REAL DEFAULT 0,
+            has_loan TEXT DEFAULT 'False',
+            existing_products TEXT DEFAULT ''
         );
-        CREATE TABLE IF NOT EXISTS regulatory_docs (
-            doc_id TEXT PRIMARY KEY,
-            title TEXT NOT NULL,
-            circular_no TEXT DEFAULT '',
-            issue_date TEXT DEFAULT '',
-            version TEXT DEFAULT 'v1.0',
-            category TEXT DEFAULT 'circular',
-            file_path TEXT DEFAULT '',
-            file_hash TEXT DEFAULT '',
-            status TEXT DEFAULT 'active',
-            ingested_at TEXT DEFAULT (datetime('now'))
+        CREATE TABLE IF NOT EXISTS transactions (
+            txn_id TEXT PRIMARY KEY,
+            customer_id TEXT NOT NULL,
+            date TEXT NOT NULL,
+            direction TEXT NOT NULL,
+            category TEXT NOT NULL,
+            amount REAL NOT NULL,
+            description TEXT DEFAULT ''
+        );
+        CREATE INDEX IF NOT EXISTS idx_txn_customer ON transactions(customer_id);
+        CREATE TABLE IF NOT EXISTS products (
+            product_id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            category TEXT,
+            asset_class TEXT,
+            risk_level TEXT,
+            min_investment REAL,
+            lock_in_months INTEGER DEFAULT 0,
+            expected_return_low REAL,
+            expected_return_high REAL,
+            liquidity TEXT,
+            goal_tags TEXT DEFAULT '',
+            allowed_risk_profiles TEXT DEFAULT '',
+            tax_benefit TEXT DEFAULT 'no',
+            senior_citizen_friendly TEXT DEFAULT 'no',
+            min_horizon_months INTEGER DEFAULT 0,
+            max_allocation_pct INTEGER DEFAULT 100
+        );
+        CREATE TABLE IF NOT EXISTS advisory_sessions (
+            session_id TEXT PRIMARY KEY,
+            timestamp TEXT DEFAULT (datetime('now')),
+            track TEXT NOT NULL,
+            customer_id TEXT,
+            actor TEXT DEFAULT '',
+            question TEXT DEFAULT '',
+            answered INTEGER DEFAULT 0,
+            needs_human_override INTEGER DEFAULT 0,
+            escalation_reason TEXT DEFAULT '',
+            payload TEXT DEFAULT ''
         );
     """)
     conn.commit()
+    conn.close()
+    _seed_customers()
+    _seed_transactions()
+    _seed_products()
+
+
+def _seed_customers():
+    conn = get_db()
+    count = conn.execute("SELECT COUNT(*) AS c FROM customers").fetchone()["c"]
+    if count == 0 and os.path.exists(CUSTOMERS_CSV):
+        with open(CUSTOMERS_CSV, "r", encoding="utf-8") as f:
+            rows = list(csv.DictReader(f))
+        conn.executemany(
+            """INSERT OR REPLACE INTO customers VALUES
+               (:customer_id,:name,:age,:gender,:city,:occupation,:employment_type,
+                :annual_income,:monthly_income,:marital_status,:dependents,:kyc_status,
+                :stated_risk_appetite,:investment_horizon_months,:goals,:onboard_date,
+                :savings_balance,:has_loan,:existing_products)""",
+            rows)
+        conn.commit()
+    conn.close()
+
+
+def _seed_transactions():
+    conn = get_db()
+    count = conn.execute("SELECT COUNT(*) AS c FROM transactions").fetchone()["c"]
+    if count == 0 and os.path.exists(TRANSACTIONS_CSV):
+        with open(TRANSACTIONS_CSV, "r", encoding="utf-8") as f:
+            rows = list(csv.DictReader(f))
+        conn.executemany(
+            "INSERT OR REPLACE INTO transactions VALUES (:txn_id,:customer_id,:date,:direction,:category,:amount,:description)",
+            rows)
+        conn.commit()
+    conn.close()
+
+
+def _seed_products():
+    conn = get_db()
+    count = conn.execute("SELECT COUNT(*) AS c FROM products").fetchone()["c"]
+    if count == 0 and os.path.exists(PRODUCTS_CSV):
+        with open(PRODUCTS_CSV, "r", encoding="utf-8") as f:
+            rows = list(csv.DictReader(f))
+        for r in rows:
+            r["lock_in_months"] = int(float(r.get("lock_in_months") or 0))
+            r["min_horizon_months"] = int(float(r.get("min_horizon_months") or 0))
+        conn.executemany(
+            """INSERT OR REPLACE INTO products VALUES
+               (:product_id,:name,:category,:asset_class,:risk_level,:min_investment,
+                :lock_in_months,:expected_return_low,:expected_return_high,:liquidity,
+                :goal_tags,:allowed_risk_profiles,:tax_benefit,:senior_citizen_friendly,
+                :min_horizon_months,:max_allocation_pct)""",
+            rows)
+        conn.commit()
     conn.close()
 
 
@@ -150,89 +253,119 @@ def get_audit_log(entry_id: str) -> Optional[dict]:
     return dict(row) if row else None
 
 
-# ─── FAQ ───
+# ─── Advisory: customers / transactions / products / sessions ───
 
-def list_faqs(search: str = "") -> list:
+def list_customers(search: str = "") -> list:
     conn = get_db()
     if search:
         rows = conn.execute(
-            "SELECT * FROM faq WHERE question LIKE ? OR answer LIKE ?",
-            (f"%{search}%", f"%{search}%")
-        ).fetchall()
+            "SELECT customer_id, name, age, city, occupation, annual_income, "
+            "stated_risk_appetite, kyc_status, goals FROM customers "
+            "WHERE name LIKE ? OR customer_id LIKE ? ORDER BY customer_id",
+            (f"%{search}%", f"%{search}%")).fetchall()
     else:
-        rows = conn.execute("SELECT * FROM faq").fetchall()
-    conn.close()
-    return [{"id": r["id"], "question": r["question"], "answer": r["answer"]} for r in rows]
-
-
-def create_faq(question: str, answer: str):
-    conn = get_db()
-    conn.execute("INSERT INTO faq (question, answer) VALUES (?,?)", (question, answer))
-    conn.commit()
-    conn.close()
-
-
-def seed_faq():
-    conn = get_db()
-    existing = conn.execute("SELECT COUNT(*) as c FROM faq").fetchone()["c"]
-    if existing == 0:
-        faqs = [
-            ("What documents are accepted for KYC?", "An officially valid document such as a passport, driving licence, Voter ID, Aadhaar card or NREGA job card is accepted for individual identity verification."),
-            ("How often do I need to update my KYC?", "Low risk customers must update KYC at least once every ten years. Medium and high risk customers must update at least once every eight years."),
-            ("Why has my account been restricted?", "If KYC records are not updated within the stipulated period, the bank may restrict the operation of the account. Please visit a branch to complete the updation."),
-            ("How are account charges disclosed?", "Banks are required to display a schedule of charges and to notify customers of any change in charges before they take effect."),
-            ("How do I file a complaint?", "You can register a complaint with the bank's internal grievance cell, which must acknowledge it promptly and resolve it within the prescribed timeline."),
-            ("What happens if I am not satisfied with the bank's response?", "If your complaint is not resolved satisfactorily, you may escalate it to the Banking Ombudsman within the prescribed period after exhausting the bank's internal grievance mechanism."),
-        ]
-        conn.executemany("INSERT INTO faq (question, answer) VALUES (?,?)", faqs)
-        conn.commit()
-    conn.close()
-
-
-# ─── Regulatory Docs (version-controlled knowledge store) ───
-
-def list_regulatory_docs() -> list:
-    conn = get_db()
-    rows = conn.execute("SELECT * FROM regulatory_docs ORDER BY ingested_at DESC").fetchall()
+        rows = conn.execute(
+            "SELECT customer_id, name, age, city, occupation, annual_income, "
+            "stated_risk_appetite, kyc_status, goals FROM customers ORDER BY customer_id"
+        ).fetchall()
     conn.close()
     return [dict(r) for r in rows]
 
 
-def get_regulatory_doc(doc_id: str) -> Optional[dict]:
+def get_customer_row(customer_id: str) -> Optional[dict]:
     conn = get_db()
-    row = conn.execute("SELECT * FROM regulatory_docs WHERE doc_id=?", (doc_id,)).fetchone()
+    row = conn.execute("SELECT * FROM customers WHERE customer_id=?", (customer_id,)).fetchone()
     conn.close()
     return dict(row) if row else None
 
 
-def upsert_regulatory_doc(doc_id: str, title: str, circular_no: str = "", issue_date: str = "",
-                          version: str = "v1.0", category: str = "circular",
-                          file_path: str = "", file_hash: str = "") -> None:
+def get_transactions(customer_id: str) -> list:
+    conn = get_db()
+    rows = conn.execute(
+        "SELECT txn_id, date, direction, category, amount, description "
+        "FROM transactions WHERE customer_id=? ORDER BY date", (customer_id,)
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def get_customer_txn_summary(customer_id: str) -> dict:
+    """Aggregate transactional signals used by the profile builder."""
+    conn = get_db()
+    row = conn.execute(
+        """SELECT
+             COUNT(*) AS txn_count,
+             SUM(CASE WHEN direction='credit' THEN amount ELSE 0 END) AS total_credits,
+             SUM(CASE WHEN direction='debit' THEN amount ELSE 0 END) AS total_debits,
+             AVG(CASE WHEN direction='credit' THEN amount END) AS avg_credit,
+             SUM(CASE WHEN category='sip_investment' THEN amount ELSE 0 END) AS sip_total,
+             SUM(CASE WHEN category='emi' THEN amount ELSE 0 END) AS emi_total,
+             SUM(CASE WHEN category='dining_entertainment' OR category='shopping'
+                      THEN amount ELSE 0 END) AS lifestyle_total,
+             SUM(CASE WHEN category='rent' OR category='maintenance'
+                      THEN amount ELSE 0 END) AS housing_total,
+             SUM(CASE WHEN category='insurance_premium' THEN amount ELSE 0 END) AS insurance_total,
+             SUM(CASE WHEN category='school_fees' THEN amount ELSE 0 END) AS education_total,
+             MIN(date) AS first_date, MAX(date) AS last_date
+           FROM transactions WHERE customer_id=?""",
+        (customer_id,)).fetchone()
+    conn.close()
+    return dict(row)
+
+
+def upsert_product(prod: dict) -> None:
     conn = get_db()
     conn.execute(
-        """INSERT INTO regulatory_docs
-           (doc_id, title, circular_no, issue_date, version, category, file_path, file_hash)
-           VALUES (?,?,?,?,?,?,?,?)
-           ON CONFLICT(doc_id) DO UPDATE SET
-             title=excluded.title, circular_no=excluded.circular_no,
-             issue_date=excluded.issue_date, version=excluded.version,
-             category=excluded.category, file_path=excluded.file_path,
-             file_hash=excluded.file_hash,
-             ingested_at=datetime('now')""",
-        (doc_id, title, circular_no, issue_date, version, category, file_path, file_hash)
-    )
+        """INSERT INTO products VALUES
+           (:product_id,:name,:category,:asset_class,:risk_level,:min_investment,
+            :lock_in_months,:expected_return_low,:expected_return_high,:liquidity,
+            :goal_tags,:allowed_risk_profiles,:tax_benefit,:senior_citizen_friendly,
+            :min_horizon_months,:max_allocation_pct)
+           ON CONFLICT(product_id) DO UPDATE SET
+             name=excluded.name, category=excluded.category, asset_class=excluded.asset_class,
+             risk_level=excluded.risk_level, min_investment=excluded.min_investment,
+             lock_in_months=excluded.lock_in_months,
+             expected_return_low=excluded.expected_return_low,
+             expected_return_high=excluded.expected_return_high,
+             liquidity=excluded.liquidity, goal_tags=excluded.goal_tags,
+             allowed_risk_profiles=excluded.allowed_risk_profiles,
+             tax_benefit=excluded.tax_benefit,
+             senior_citizen_friendly=excluded.senior_citizen_friendly,
+             min_horizon_months=excluded.min_horizon_months,
+             max_allocation_pct=excluded.max_allocation_pct""",
+        prod)
     conn.commit()
     conn.close()
 
 
-def delete_regulatory_doc(doc_id: str) -> bool:
+def get_product(product_id: str) -> Optional[dict]:
     conn = get_db()
-    cur = conn.execute("DELETE FROM regulatory_docs WHERE doc_id=?", (doc_id,))
+    row = conn.execute("SELECT * FROM products WHERE product_id=?", (product_id,)).fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+
+def create_advisory_session(session_id: str, track: str, customer_id: str, actor: str,
+                            question: str, answered: bool, needs_human_override: bool,
+                            escalation_reason: str, payload: str) -> None:
+    conn = get_db()
+    conn.execute(
+        "INSERT INTO advisory_sessions VALUES (?,?,datetime('now'),?,?,?,?,?,?,?)",
+        (session_id, track, customer_id, actor, question, int(answered),
+         int(needs_human_override), escalation_reason or "", payload))
     conn.commit()
     conn.close()
-    return cur.rowcount > 0
+
+
+def list_advisory_sessions(limit: int = 100) -> list:
+    conn = get_db()
+    rows = conn.execute(
+        "SELECT session_id, timestamp, track, customer_id, actor, question, answered, "
+        "needs_human_override, escalation_reason FROM advisory_sessions "
+        "ORDER BY timestamp DESC LIMIT ?", (limit,)).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
 
 
 # Initialize on import
 init_db()
-seed_faq()

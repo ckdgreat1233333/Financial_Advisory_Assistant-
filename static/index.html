@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Regulatory &amp; Compliance Copilot</title>
+<title>Personalized Financial Advisory Assistant</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;font-family:system-ui,-apple-system,sans-serif}
 body{background:#0f172a;color:#e2e8f0;min-height:100vh}
@@ -22,11 +22,7 @@ header h1 span{background:#4f46e5;color:#c7d2fe;font-size:10px;padding:2px 8px;b
 .btn-primary{background:#4f46e5;color:#fff}
 .btn-primary:hover{background:#4338ca}
 .btn-danger{background:#dc2626;color:#fff}
-.btn-danger:hover{background:#b91c1c}
 .btn-outline{background:#334155;color:#94a3b8;border:1px solid #475569}
-.btn-outline:hover{background:#475569;color:#fff}
-.btn-indigo{background:#4f46e5;color:#fff}
-.btn-indigo:hover{background:#4338ca}
 .btn-sm{padding:5px 10px;font-size:11px}
 .card{background:#1e293b;border:1px solid #1e293b;border-radius:16px;padding:20px;margin-bottom:16px}
 .card h3{font-size:14px;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px}
@@ -34,30 +30,16 @@ header h1 span{background:#4f46e5;color:#c7d2fe;font-size:10px;padding:2px 8px;b
 .flex-between{display:flex;justify-content:space-between;align-items:center}
 .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
 .grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
-.mt-2{margin-top:8px}
-.mt-3{margin-top:12px}
-.mt-4{margin-top:16px}
-.mb-2{margin-bottom:8px}
-.mb-3{margin-bottom:12px}
-.text-xs{font-size:12px}
-.text-sm{font-size:13px}
-.text-slate{color:#94a3b8}
-.text-white{color:#fff}
-.text-emerald{color:#10b981}
-.text-rose{color:#f43f5e}
-.text-amber{color:#f59e0b}
-.text-indigo{color:#818cf8}
-.font-bold{font-weight:700}
-.font-mono{font-family:'Courier New',monospace}
+.mt-2{margin-top:8px}.mt-3{margin-top:12px}.mt-4{margin-top:16px}.mb-2{margin-bottom:8px}.mb-3{margin-bottom:12px}
+.text-xs{font-size:12px}.text-sm{font-size:13px}
+.text-slate{color:#94a3b8}.text-white{color:#fff}
+.text-emerald{color:#10b981}.text-rose{color:#f43f5e}.text-amber{color:#f59e0b}
+.font-bold{font-weight:700}.font-mono{font-family:'Courier New',monospace}
 .badge{font-size:10px;padding:2px 8px;border-radius:12px;font-weight:600;display:inline-block}
 .badge-success{background:rgba(16,185,129,.15);color:#10b981;border:1px solid rgba(16,185,129,.2)}
 .badge-warning{background:rgba(245,158,11,.15);color:#f59e0b;border:1px solid rgba(245,158,11,.2)}
 .badge-danger{background:rgba(244,63,94,.15);color:#f43f5e;border:1px solid rgba(244,63,94,.2)}
 .badge-info{background:rgba(129,140,248,.15);color:#818cf8;border:1px solid rgba(129,140,248,.2)}
-table{width:100%;border-collapse:collapse;font-size:13px}
-th{text-align:left;padding:12px;color:#64748b;font-weight:600;border-bottom:1px solid #1e293b}
-td{padding:12px;border-bottom:1px solid #1e293b}
-tr:hover{background:rgba(30,41,59,.5)}
 input,select,textarea{background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:10px 12px;color:#fff;font-size:13px;width:100%;outline:none}
 input:focus,select:focus,textarea:focus{border-color:#4f46e5}
 label{font-size:12px;color:#94a3b8;display:block;margin-bottom:4px}
@@ -70,112 +52,65 @@ label{font-size:12px;color:#94a3b8;display:block;margin-bottom:4px}
 .role-btn{flex:1;padding:10px;border-radius:10px;border:1px solid #1e293b;background:#0f172a;color:#94a3b8;cursor:pointer;font-size:13px;text-align:center;transition:all .15s}
 .role-btn.active{background:rgba(79,70,229,.15);border-color:#4f46e5;color:#818cf8;font-weight:600}
 .form-group{margin-bottom:14px}
-.form-group input{background:#0f172a}
 .tabs{display:flex;gap:4px;padding:4px;background:#0f172a;border-radius:10px;border:1px solid #1e293b;margin-bottom:16px;flex-wrap:wrap}
 .tab-btn{padding:8px 14px;border-radius:8px;border:none;background:transparent;color:#94a3b8;cursor:pointer;font-size:12px;font-weight:600;transition:all .15s}
 .tab-btn.active{background:#4f46e5;color:#fff}
-.tab-btn:hover:not(.active){background:#1e293b;color:#e2e8f0}
-.chat-container{display:grid;grid-template-columns:2fr 1fr;gap:20px;height:calc(100vh - 220px);min-height:420px}
-.chat-pane{display:flex;flex-direction:column;background:#1e293b;border:1px solid #1e2a3a;border-radius:16px;overflow:hidden}
+.chat-container{display:grid;grid-template-columns:340px 1fr;gap:20px;align-items:start}
+.chat-pane{background:#1e293b;border:1px solid #1e2a3a;border-radius:16px;overflow:hidden}
 .chat-header{background:#0f172a;border-bottom:1px solid #1e2a3a;padding:12px 16px;display:flex;align-items:center;justify-content:space-between}
-.chat-header .ai-badge{background:#1a1b3a;border:1px solid #4f46e5;color:#818cf8;padding:2px 6px;border-radius:6px;font-size:9px;font-family:monospace}
-.chat-messages{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:16px}
-.chat-msg{display:flex;gap:10px;max-width:88%;align-items:flex-start}
-.chat-msg.user{flex-direction:row-reverse;margin-left:auto}
+.chat-msg{display:flex;gap:10px;max-width:100%;align-items:flex-start}
+.chat-msg.ai .bubble{background:#0f172a;color:#e2e8f0;border:1px solid #1e2a3a;padding:12px 16px;border-radius:10px;font-size:13px;line-height:1.7;word-break:break-word;white-space:pre-wrap}
 .chat-msg .avatar{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
-.chat-msg .avatar.user{background:#059669;color:#fff}
 .chat-msg .avatar.ai{background:#1a1b3a;border:1px solid #4f46e5;color:#818cf8}
-.chat-msg .bubble{padding:10px 14px;border-radius:10px;font-size:12px;line-height:1.6;word-break:break-word;white-space:pre-wrap}
-.chat-msg.user .bubble{background:#1e2a3a;color:#f1f5f9;border:1px solid #334155}
-.chat-msg.ai .bubble{background:#0f172a;color:#e2e8f0;border:1px solid #1e2a3a}
-.chat-msg .meta{display:flex;justify-content:space-between;align-items:center;margin-top:4px;padding:0 4px}
-.chat-msg .timestamp{font-size:9px;color:#64748b}
-.chat-input{padding:10px;background:#0f172a;border-top:1px solid #1e2a3a;display:flex;gap:8px}
-.chat-input input{flex:1;background:#1e2a3a;border:1px solid #334155;border-radius:10px;padding:10px 14px;color:#fff;font-size:12px;outline:none}
-.chat-input input:focus{border-color:#4f46e5}
-.chat-input button{padding:10px;border-radius:10px;border:none;background:#4f46e5;color:#fff;cursor:pointer;font-size:14px;width:40px;flex-shrink:0}
-.chat-input button:disabled{background:#1e2a3a;color:#64748b}
-.chat-sidebar{background:#1e293b;border:1px solid #1e2a3a;border-radius:16px;padding:16px;display:flex;flex-direction:column}
-.chat-sidebar h4{font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
-.chat-sidebar .clause-box{background:#0f172a;border:1px solid #4f46e5;border-radius:10px;padding:14px;position:relative;margin-top:8px}
-.chat-sidebar .clause-tag{position:absolute;right:8px;top:-8px;background:#1a1b3a;border:1px solid #4f46e5;color:#818cf8;padding:1px 6px;border-radius:4px;font-size:9px;font-weight:600}
-.chat-sidebar .clause-name{font-size:12px;color:#e2e8f0;font-weight:600;font-family:monospace}
-.chat-sidebar .clause-doc{font-size:11px;color:#94a3b8;margin:4px 0}
-.chat-sidebar .clause-text{font-size:11px;color:#94a3b8;font-style:italic;background:#0f172a;padding:6px;border-radius:6px;border:1px solid #1e2a3a;margin:6px 0}
-.chat-sidebar .clause-auth{font-size:10px;color:#10b981}
+.clause-box{background:#0f172a;border:1px solid #4f46e5;border-radius:10px;padding:14px;position:relative;margin-top:8px}
+.clause-tag{position:absolute;right:8px;top:-8px;background:#1a1b3a;border:1px solid #4f46e5;color:#818cf8;padding:1px 6px;border-radius:4px;font-size:9px;font-weight:600}
+.clause-text{font-size:11px;color:#94a3b8;font-style:italic;line-height:1.6}
+.clause-auth{font-size:10px;color:#10b981;margin-top:6px}
 @keyframes bounce{0%,100%{opacity:0.4}50%{opacity:1}}
 .loading-dot{width:6px;height:6px;background:#818cf8;border-radius:50%;display:inline-block;animation:bounce .8s infinite}
-.loading-dot:nth-child(2){animation-delay:.15s}
-.loading-dot:nth-child(3){animation-delay:.3s}
-@media(max-width:768px){.chat-container{grid-template-columns:1fr}.grid-2,.grid-3{grid-template-columns:1fr}}
 .spinner{width:32px;height:32px;border:3px solid #1e293b;border-top-color:#4f46e5;border-radius:50%;animation:spin .6s linear infinite;margin:40px auto}
 @keyframes spin{to{transform:rotate(360deg)}}
 .query-box{background:#0f172a;border:1px solid #4f46e5;border-radius:14px;padding:18px;margin-bottom:16px}
 .answer-block{background:#0f172a;border:1px solid #1e2a3a;border-radius:12px;padding:16px;margin-bottom:12px;line-height:1.7;font-size:13px;white-space:pre-wrap}
 .conf-meter{height:8px;background:#1e293b;border-radius:6px;overflow:hidden;margin-top:6px}
 .conf-fill{height:100%;border-radius:6px;transition:width .4s}
-.conf-fill.high{background:#10b981}
-.conf-fill.medium{background:#f59e0b}
-.conf-fill.low{background:#f43f5e}
-.cite-card{background:#0f172a;border:1px solid #1e2a3a;border-radius:10px;padding:12px;margin-bottom:8px}
-.cite-card .src{font-size:12px;font-weight:600;color:#e2e8f0}
-.cite-card .meta{font-size:10px;color:#64748b;font-family:monospace;margin:3px 0}
-.cite-card .quote{font-size:11px;color:#94a3b8;font-style:italic;border-left:3px solid #4f46e5;padding-left:8px;margin-top:6px}
+.conf-fill.high{background:#10b981}.conf-fill.medium{background:#f59e0b}.conf-fill.low{background:#f43f5e}
 .escalate-banner{background:rgba(244,63,94,.12);border:1px solid rgba(244,63,94,.35);border-radius:12px;padding:12px 16px;margin-bottom:12px;font-size:13px;color:#fda4af}
 .escalate-banner strong{color:#f43f5e}
 .conflict-banner{background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.35);border-radius:12px;padding:12px 16px;margin-bottom:12px;font-size:13px;color:#fcd34d}
-.retrieved-item{background:#0f172a;border:1px solid #1e2a3a;border-radius:8px;padding:10px;margin-bottom:6px;font-size:11px;color:#94a3b8}
-.retrieved-item .sim{color:#818cf8;font-family:monospace}
-.retrieved-item .src{color:#e2e8f0;font-weight:600}
 .notfound-box{background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.25);border-radius:12px;padding:16px;font-size:13px;color:#fcd34d;line-height:1.6}
+@media(max-width:768px){.chat-container,.grid-2,.grid-3{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
 <div id="app"></div>
 <script>
 const API = 'http://127.0.0.1:8000';
-let state = { user: null, docs: [], logs: [], faqs: [], view: 'login', role: 'officer', officerTab: 'query', customerTab: 'chat', chatMessages: null, chatLoading: false, activeGrounding: null };
+let state = { user: null, view: 'login', officerTab: 'rm', customers: [], activeCustomer: null,
+              activeProfile: null, rmResult: null, logs: [] };
 
 async function api(method, path, body) {
   const opts = { method, headers: {} };
-  if (state.user) opts.headers['X-Portal-Role'] = state.user.role;
-  if (body && !(body instanceof FormData)) {
+  if (body) {
     opts.headers['Content-Type'] = 'application/json';
     opts.body = JSON.stringify(body);
-  } else if (body instanceof FormData) {
-    opts.body = body;
   }
   const res = await fetch(API + path, opts);
   if (!res.ok) throw new Error(await res.text());
   return res.json();
 }
 
-async function loadData() {
+async function loadLogs() {
   try {
-    const [d, l, f] = await Promise.all([
-      api('GET', '/api/regulatory/documents'),
-      api('GET', '/api/audit-logs'),
-      api('GET', '/api/faq')
-    ]);
-    state.docs = d.documents || [];
+    const l = await api('GET', '/api/audit-logs');
     state.logs = l.logs || [];
-    state.faqs = f.faqs || [];
-  } catch(e) { console.warn('Load error:', e); }
+  } catch(e) { console.warn(e); }
 }
 
 function esc(str) {
   const d = document.createElement('div');
-  d.textContent = str || '';
+  d.textContent = str == null ? '' : String(str);
   return d.innerHTML;
-}
-
-function confBadge(level, conf) {
-  const cls = level === 'High' ? 'badge-success' : level === 'Medium' ? 'badge-warning' : 'badge-danger';
-  return `<span class="badge ${cls}">${esc(level)} Confidence · ${Math.round((conf||0)*100)}%</span>`;
-}
-
-function confClass(level) {
-  return level === 'High' ? 'high' : level === 'Medium' ? 'medium' : 'low';
 }
 
 // ─── Login / Register ───
@@ -183,18 +118,18 @@ function renderLogin() {
   document.getElementById('app').innerHTML = `
     <div class="auth-container">
       <div class="auth-card">
-        <div class="logo">&#9881;</div>
-        <h2>Regulatory &amp; Compliance Copilot</h2>
-        <p>Banking domain · grounded answers with citation enforcement</p>
+        <div class="logo">&#9878;</div>
+        <h2>Personalized Financial Advisory Assistant</h2>
+        <p>Banking domain · explainable, compliance-aligned guidance</p>
         <div class="role-selector" id="role-selector">
           <button class="role-btn" data-role="customer">Customer</button>
-          <button class="role-btn active" data-role="officer">Compliance Officer</button>
+          <button class="role-btn active" data-role="officer">Relationship Manager</button>
         </div>
         <div class="form-group"><label>Username</label><input type="text" id="login-username" placeholder="username" value="admin"></div>
         <div class="form-group"><label>Password</label><input type="password" id="login-password" placeholder="password" value="admin123"></div>
         <button class="btn btn-primary" style="width:100%;padding:12px" id="login-btn">Sign In</button>
         <p style="text-align:center;margin-top:12px;font-size:12px;color:#64748b">New user? <a href="#" id="show-register" style="color:#818cf8">Create account</a></p>
-        <p style="text-align:center;margin-top:16px;font-size:10px;color:#64748b;font-style:italic">"In compliance systems, silence is better than hallucination."</p>
+        <p style="text-align:center;margin-top:16px;font-size:10px;color:#64748b;font-style:italic">"In financial advisory, explainability is more important than intelligence."</p>
       </div>
     </div>`;
 
@@ -213,11 +148,8 @@ function renderLogin() {
       const res = await api('POST', '/api/auth/login', { username, password, portalType: role });
       state.user = res.user;
       state.user.role = role;
-      await loadData();
       renderApp();
-    } catch(e) {
-      alert('Login failed: ' + e.message);
-    }
+    } catch(e) { alert('Login failed: ' + e.message); }
   });
 
   document.getElementById('show-register').addEventListener('click', (e) => {
@@ -227,21 +159,19 @@ function renderLogin() {
 }
 
 function showRegister() {
-  const appEl = document.getElementById('app');
-  appEl.innerHTML = `
+  document.getElementById('app').innerHTML = `
     <div class="auth-container">
       <div class="auth-card">
-        <div class="logo">&#9881;</div>
+        <div class="logo">&#9878;</div>
         <h2>Create Account</h2>
-        <p>Register for the Regulatory &amp; Compliance Copilot</p>
+        <p>Register for the advisory assistant</p>
         <div class="form-group"><label>Full Name</label><input type="text" id="reg-name" placeholder="Jane Doe"></div>
         <div class="form-group"><label>Username</label><input type="text" id="reg-username" placeholder="janedoe"></div>
         <div class="form-group"><label>Email</label><input type="email" id="reg-email" placeholder="jane@example.com"></div>
-        <div class="form-group"><label>Phone</label><input type="text" id="reg-phone" placeholder="+91 9876543210"></div>
         <div class="form-group"><label>Password</label><input type="password" id="reg-password" placeholder="Min 6 characters"></div>
         <div class="role-selector" id="reg-role-selector">
           <button class="role-btn active" data-role="customer">Customer</button>
-          <button class="role-btn" data-role="officer">Compliance Officer</button>
+          <button class="role-btn" data-role="officer">Relationship Manager</button>
         </div>
         <button class="btn btn-primary" style="width:100%;padding:12px" id="reg-btn">Create Account</button>
         <p style="text-align:center;margin-top:12px;font-size:12px;color:#64748b">Already have an account? <a href="#" id="show-login" style="color:#818cf8">Sign in</a></p>
@@ -259,19 +189,15 @@ function showRegister() {
     const name = document.getElementById('reg-name').value.trim();
     const username = document.getElementById('reg-username').value.trim();
     const email = document.getElementById('reg-email').value.trim();
-    const phone = document.getElementById('reg-phone').value.trim();
     const password = document.getElementById('reg-password').value;
     if (!name || !username || !email || !password) return alert('Please fill all required fields');
     try {
-      await api('POST', '/api/auth/register', { username, fullName: name, email, phone, password, portalType: role });
+      await api('POST', '/api/auth/register', { username, fullName: name, email, password, portalType: role });
       const res = await api('POST', '/api/auth/login', { username, password, portalType: role });
       state.user = res.user;
       state.user.role = role;
-      await loadData();
       renderApp();
-    } catch(e) {
-      alert('Registration failed: ' + e.message);
-    }
+    } catch(e) { alert('Registration failed: ' + e.message); }
   });
 
   document.getElementById('show-login').addEventListener('click', (e) => {
@@ -282,12 +208,12 @@ function showRegister() {
 
 // ─── App shell ───
 function renderApp() {
-  const isOfficer = state.user.role !== 'customer';
+  const isRM = state.user.role !== 'customer';
   document.getElementById('app').innerHTML = `
     <header>
-      <h1>&#9881; Regulatory &amp; Compliance Copilot <span>${isOfficer ? 'Compliance &amp; Audit' : 'Customer'}</span></h1>
+      <h1>&#9878; Personalized Financial Advisory Assistant <span>${isRM ? 'RM Decision Support' : 'Customer Guidance'}</span></h1>
       <div class="user-badge">
-        <span class="dot ${isOfficer ? 'officer' : 'customer'}"></span>
+        <span class="dot ${isRM ? 'officer' : 'customer'}"></span>
         <span>${esc(state.user.name || state.user.username)}</span>
         <button class="logout-btn" id="logout-btn">Logout</button>
       </div>
@@ -298,17 +224,15 @@ function renderApp() {
     state.user = null;
     renderLogin();
   });
-  if (isOfficer) renderOfficerView();
+  if (isRM) renderOfficerView();
   else renderCustomerView();
 }
 
-// ═══════ OFFICER (Business Track — Compliance & Audit) ═══════
+// ═══════ BUSINESS TRACK — RM DECISION SUPPORT ═══════
 function renderOfficerView() {
   const tabs = [
-    { id: 'query', label: 'Compliance Query' },
-    { id: 'corpus', label: 'Regulatory Corpus' },
-    { id: 'logs', label: 'Audit Ledger' },
-    { id: 'admin', label: 'Admin' }
+    { id: 'rm', label: 'RM Advisory' },
+    { id: 'logs', label: 'Advisory Audit Ledger' }
   ];
   const mc = document.getElementById('main-content');
   mc.innerHTML = `<div class="tabs" id="off-tabs">${tabs.map(t =>
@@ -325,182 +249,211 @@ function renderOfficerView() {
 
 function showOfficerTab() {
   const body = document.getElementById('off-body');
-  switch(state.officerTab) {
-    case 'query': renderComplianceQuery(body); break;
-    case 'corpus': renderRegulatoryCorpus(body); break;
-    case 'logs': renderAuditLedger(body); break;
-    case 'admin': renderOfficerAdmin(body); break;
+  if (state.officerTab === 'rm') renderRMAdvisory(body);
+  else renderAuditLedger(body);
+}
+
+function verdictBadge(v) {
+  const map = { eligible: 'badge-success', escalate: 'badge-warning', blocked: 'badge-danger' };
+  return `<span class="badge ${map[v] || 'badge-info'}">${esc(String(v))}</span>`;
+}
+
+function riskBadge(r) {
+  const map = { low: 'badge-success', moderate: 'badge-warning', high: 'badge-danger' };
+  return `<span class="badge ${map[r] || 'badge-info'}">${esc(String(r))} risk</span>`;
+}
+
+function kycBadge(s) {
+  return `<span class="badge ${s === 'verified' ? 'badge-success' : 'badge-danger'}">KYC ${esc(s)}</span>`;
+}
+
+async function ensureCustomers() {
+  if (!state.customers.length) {
+    const res = await api('GET', '/api/advisory/customers');
+    state.customers = res.customers || [];
   }
 }
 
-function renderComplianceQuery(el) {
-  el.innerHTML = `
-    <div class="query-box">
-      <div class="flex-between mb-2">
-        <h3 style="margin:0;color:#818cf8">Internal Compliance Query</h3>
-        <span class="badge badge-info">Business Track</span>
-      </div>
-      <p class="text-xs text-slate mb-3" style="line-height:1.6">Ask a question about RBI circulars, internal compliance policies, or audit preparation. Answers are grounded only in approved regulatory documents with citations, confidence scoring, and escalation recommendations.</p>
-      <div class="flex" style="gap:8px">
-        <textarea id="reg-query-input" rows="2" placeholder="e.g. What documents are required for customer identity verification?" style="flex:1"></textarea>
-        <button class="btn btn-primary" id="reg-query-btn" style="align-self:stretch">Ask Copilot</button>
-      </div>
-      <div id="reg-query-error" class="hidden text-rose text-xs mt-2"></div>
-    </div>
-    <div id="reg-query-result"></div>`;
-
-  const ask = async () => {
-    const q = document.getElementById('reg-query-input').value.trim();
-    const errEl = document.getElementById('reg-query-error');
-    if (!q) { errEl.textContent = 'Please enter a question'; errEl.classList.remove('hidden'); return; }
-    errEl.classList.add('hidden');
-    const btn = document.getElementById('reg-query-btn');
-    btn.disabled = true; btn.textContent = 'Analyzing...';
-    try {
-      const res = await api('POST', '/api/regulatory/query', { question: q });
-      renderQueryResult(document.getElementById('reg-query-result'), res);
-    } catch(e) {
-      errEl.textContent = 'Failed: ' + e.message;
-      errEl.classList.remove('hidden');
-    }
-    btn.disabled = false; btn.textContent = 'Ask Copilot';
-  };
-  document.getElementById('reg-query-btn').addEventListener('click', ask);
-  document.getElementById('reg-query-input').addEventListener('keydown', (e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) ask(); });
+function featChip(label, value) {
+  return `<div style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:8px 10px">
+    <div class="text-xs text-slate">${label}</div><div class="text-white font-bold text-sm">${value}</div></div>`;
 }
 
-function renderQueryResult(el, res) {
-  const level = res.confidence_level || 'Low';
-  const answered = res.answered;
-
-  let top = '';
-  if (!answered) {
-    top = `<div class="notfound-box">&#9888; <strong>Information not found</strong> in the approved regulatory documents.
-      ${res.escalation_reason ? `<div class="text-xs mt-2" style="color:#fcd34d">${esc(res.escalation_reason)}</div>` : ''}
-      ${res.disclaimer ? `<div class="text-xs mt-2 text-slate">${esc(res.disclaimer)}</div>` : ''}</div>`;
-  } else {
-    top = `<div class="answer-block">${esc(res.answer)}</div>`;
-  }
-
-  let escalation = '';
-  if (answered && res.needs_escalation) {
-    escalation = `<div class="escalate-banner"><strong>&#9888; Escalation Recommended</strong> — this answer requires compliance review.
-      <div class="text-xs mt-2">${esc(res.escalation_reason || 'Confidence below threshold.')}</div></div>`;
-  }
-  let conflict = '';
-  if (res.contradiction_detected) {
-    conflict = `<div class="conflict-banner"><strong>&#9888; Possible Contradiction</strong> — conflicting clauses were detected across documents. A human reviewer should adjudicate.</div>`;
-  }
-
-  let citations = '';
-  if (res.citations && res.citations.length) {
-    citations = `<h3>Citations</h3>` + res.citations.map(c => `
-      <div class="cite-card">
-        <div class="flex-between">
-          <span class="src">${esc(c.source)}</span>
-          <span class="badge ${c.grounded ? 'badge-success' : 'badge-danger'}">${c.grounded ? 'Grounded' : 'Ungrounded'}</span>
+function renderRMAdvisory(el) {
+  el.innerHTML = `<div class="spinner"></div>`;
+  ensureCustomers().then(() => {
+    el.innerHTML = `
+      <div class="chat-container">
+        <div class="card">
+          <h3>Customers</h3>
+          <input type="text" id="cust-search" placeholder="Search name or ID..." class="mb-2">
+          <div id="cust-list" style="max-height:560px;overflow-y:auto"></div>
         </div>
-        <div class="meta">${esc(c.circular_no || '')} · Clause ${esc(c.clause_ref || '')} · ${esc(c.chunk_id || '')}</div>
-        ${c.quote ? `<div class="quote">"${esc(c.quote)}"</div>` : ''}
-      </div>`).join('');
-  }
+        <div id="rm-panel"><p class="text-sm text-slate">Select a customer to build their advisory profile.</p></div>
+      </div>`;
 
-  let retrieved = '';
-  if (res.retrieved && res.retrieved.length) {
-    retrieved = `<h3>Retrieved Regulatory Excerpts</h3>` + res.retrieved.map(r => `
-      <div class="retrieved-item">
-        <div class="flex-between"><span class="src">${esc(r.source)}</span><span class="sim">similarity ${(r.similarity*100).toFixed(1)}%</span></div>
-        <div class="meta" style="margin:2px 0">${esc(r.circular_no || '')} · Clause ${esc(r.clause_ref || '')} · v${esc(r.version || '')}</div>
-        <div>${esc(r.text.slice(0, 220))}${r.text.length > 220 ? '…' : ''}</div>
-      </div>`).join('');
-  }
+    const drawList = (q) => {
+      const items = state.customers.filter(c =>
+        !q || (c.name || '').toLowerCase().includes(q) || (c.customer_id || '').toLowerCase().includes(q));
+      document.getElementById('cust-list').innerHTML = items.slice(0, 80).map(c => `
+        <div class="cust-row" data-cid="${esc(c.customer_id)}" style="padding:10px;border-radius:8px;border:1px solid #1e293b;margin-bottom:6px;cursor:pointer;background:${c.customer_id === state.activeCustomer ? 'rgba(79,70,229,.12)' : '#0f172a'}">
+          <div class="flex-between">
+            <span style="font-size:13px;font-weight:600">${esc(c.name)}</span>
+            <span class="font-mono text-xs text-slate">${esc(c.customer_id)}</span>
+          </div>
+          <div class="flex mt-2" style="gap:6px;align-items:center;flex-wrap:wrap">
+            <span class="badge badge-info">${esc(c.stated_risk_appetite)}</span>
+            <span class="badge ${c.kyc_status === 'verified' ? 'badge-success' : 'badge-danger'}">${esc(c.kyc_status)}</span>
+            <span class="text-xs text-slate">${esc(c.city)} · ${esc(String(c.age))}y</span>
+          </div>
+        </div>`).join('') || '<p class="text-xs text-slate">No matches.</p>';
+      document.querySelectorAll('.cust-row').forEach(row =>
+        row.addEventListener('click', () => selectCustomer(row.dataset.cid)));
+    };
+    drawList('');
+    document.getElementById('cust-search').addEventListener('input', e => drawList(e.target.value.toLowerCase()));
 
-  el.innerHTML = `
+    if (state.activeCustomer) selectCustomer(state.activeCustomer);
+  }).catch(e => {
+    el.innerHTML = `<div class="notfound-box">Advisory service unavailable: ${esc(e.message)}</div>`;
+  });
+}
+
+async function selectCustomer(cid) {
+  state.activeCustomer = cid;
+  const panel = document.getElementById('rm-panel');
+  if (!panel) return;
+  panel.innerHTML = `<div class="spinner"></div>`;
+  try {
+    const res = await api('GET', '/api/advisory/customers/' + encodeURIComponent(cid) + '/profile');
+    state.activeProfile = res;
+  } catch(e) {
+    panel.innerHTML = `<div class="notfound-box">Failed to load profile: ${esc(e.message)}</div>`;
+    return;
+  }
+  document.querySelectorAll('.cust-row').forEach(r =>
+    r.style.background = r.dataset.cid === cid ? 'rgba(79,70,229,.12)' : '#0f172a');
+  renderRMPanel();
+}
+
+function renderRMPanel() {
+  const data = state.activeProfile;
+  const p = data && data.profile;
+  const panel = document.getElementById('rm-panel');
+  if (!panel || !p) return;
+  panel.innerHTML = `
     <div class="card">
       <div class="flex-between mb-2">
-        <div class="flex" style="gap:8px;align-items:center">${confBadge(level, res.confidence)}</div>
-        <span class="text-xs text-slate">retrieval ${(res.retrieval_confidence*100).toFixed(0)}% · answer ${(res.answer_confidence*100).toFixed(0)}%</span>
+        <h3 style="margin:0">${esc(p.name)} <span class="text-xs text-slate font-mono">${esc(p.customer_id)}</span></h3>
+        <div class="flex" style="gap:6px">
+          ${kycBadge(p.kyc_status)}
+          <span class="badge badge-info">${esc(p.segment || 'unsegmented')}</span>
+        </div>
       </div>
-      <div class="conf-meter"><div class="conf-fill ${confClass(level)}" style="width:${Math.round((res.confidence||0)*100)}%"></div></div>
+      <p class="text-sm text-slate" style="line-height:1.7">${esc(data.summary)}</p>
+      ${p.risk_alignment_note ? `<div class="conflict-banner mt-3">${esc(p.risk_alignment_note)}</div>` : ''}
+      <div class="grid-3 mt-3">
+        ${featChip('Savings rate', Math.round((p.savings_rate || 0) * 100) + '%')}
+        ${featChip('Monthly surplus', '&#8377;' + Number(p.monthly_surplus || 0).toLocaleString('en-IN'))}
+        ${featChip('Emergency buffer', (p.emergency_buffer_months || 0).toFixed(1) + ' mo')}
+        ${featChip('EMI burden', Math.round((p.emi_burden || 0) * 100) + '%')}
+        ${featChip('Computed capacity', esc(p.computed_risk_capacity || ''))}
+        ${featChip('Life stage', esc((p.life_stage || '').replace(/_/g, ' ')))}
+      </div>
+      ${p.protection_gap ? '<div class="conflict-banner mt-3">Protection gap detected: no life or health cover on record. Cover-first guidance advised.</div>' : ''}
+      ${p.first_time_investor ? '<div class="mt-2"><span class="badge badge-warning">First-time investor</span></div>' : ''}
     </div>
-    ${escalation}${conflict}
-    <div class="card">${top}</div>
-    ${citations ? `<div class="card">${citations}</div>` : ''}
-    ${retrieved ? `<div class="card">${retrieved}</div>` : ''}`;
+    <div class="query-box">
+      <div class="flex-between mb-2">
+        <h3 style="margin:0;color:#818cf8">Advisory Query</h3>
+        <span class="badge badge-info">engine decides · AI explains</span>
+      </div>
+      <div class="flex" style="gap:8px">
+        <textarea id="rm-query-input" rows="2" placeholder="e.g. Which products suit this customer for retirement planning?" style="flex:1"></textarea>
+        <button class="btn btn-primary" id="rm-query-btn" style="align-self:stretch">Advise</button>
+      </div>
+    </div>
+    <div id="rm-result"></div>`;
+
+  if (state.rmResult && state.rmResult.customer_id === p.customer_id) {
+    renderRmResult(document.getElementById('rm-result'), state.rmResult);
+  }
+
+  document.getElementById('rm-query-btn').addEventListener('click', async () => {
+    const q = document.getElementById('rm-query-input').value.trim();
+    if (!q) return alert('Enter an advisory question for this customer.');
+    const btn = document.getElementById('rm-query-btn');
+    btn.disabled = true; btn.textContent = 'Analyzing…';
+    try {
+      const res = await api('POST', '/api/advisory/rm-query', { customer_id: p.customer_id, question: q });
+      state.rmResult = res;
+      renderRmResult(document.getElementById('rm-result'), res);
+    } catch(e) { alert('Failed: ' + e.message); }
+    btn.disabled = false; btn.textContent = 'Advise';
+  });
 }
 
-function renderRegulatoryCorpus(el) {
-  el.innerHTML = `<div class="spinner"></div>`;
-  loadData().then(() => {
-    el.innerHTML = `
-      <div class="card">
-        <div class="flex-between mb-3">
-          <h3 style="margin:0">Regulatory Corpus <span class="badge badge-info" style="margin-left:6px">Version-controlled</span></h3>
+function recCard(r) {
+  const scoreCls = r.score >= 0.66 ? 'high' : r.score >= 0.4 ? 'medium' : 'low';
+  return `
+    <div style="background:#0f172a;border:1px solid #1e293b;border-radius:10px;padding:14px;margin-bottom:8px">
+      <div class="flex-between mb-2">
+        <div class="flex" style="gap:6px;align-items:center">
+          <strong style="font-size:13px;color:#fff">${esc(r.name)}</strong>
+          ${riskBadge(r.risk_level)}${verdictBadge(r.verdict)}
         </div>
-        <table>
-          <thead><tr><th>Document</th><th>Circular No</th><th>Issue Date</th><th>Version</th><th>Category</th><th>Status</th><th>Action</th></tr></thead>
-          <tbody>
-            ${state.docs.map(d => `
-              <tr>
-                <td style="font-weight:600">${esc(d.title || d.doc_id)}</td>
-                <td class="font-mono text-xs">${esc(d.circular_no || '—')}</td>
-                <td class="text-xs">${esc(d.issue_date || '—')}</td>
-                <td class="text-xs font-mono">${esc(d.version)}</td>
-                <td class="text-xs">${esc(d.category)}</td>
-                <td><span class="badge ${d.status === 'active' ? 'badge-success' : 'badge-warning'}">${esc(d.status)}</span></td>
-                <td><button class="btn btn-danger btn-sm del-doc-btn" data-doc="${esc(d.doc_id)}">Archive</button></td>
-              </tr>`).join('')}
-          </tbody>
-        </table>
+        <span class="font-mono text-xs text-slate">score ${(r.score * 100).toFixed(0)}%</span>
       </div>
-      <div class="card">
-        <h3>Ingest New Regulatory Document</h3>
-        <p class="text-xs text-slate mb-3">Upload an approved RBI circular or internal policy (.txt, .md or .pdf). The document is stored in the corpus and the vector index is rebuilt so the copilot can answer from it immediately.</p>
-        <div class="grid-3 mb-3">
-          <div class="form-group"><label>Title (optional)</label><input type="text" id="ing-title" placeholder="e.g. Master Direction - KYC"></div>
-          <div class="form-group"><label>Circular No (optional)</label><input type="text" id="ing-circular" placeholder="e.g. RBI/2025-26/09"></div>
-          <div class="form-group"><label>Issue Date (optional)</label><input type="text" id="ing-date" placeholder="e.g. 01-Aug-2025"></div>
-        </div>
-        <div class="flex" style="gap:8px;align-items:flex-end">
-          <div class="form-group" style="flex:1"><label>File</label><input type="file" id="ing-file" accept=".txt,.md,.pdf"></div>
-          <button class="btn btn-indigo" id="ing-btn">Ingest</button>
-        </div>
-        <div id="ing-msg" class="text-xs mt-2"></div>
-      </div>`;
-    document.querySelectorAll('.del-doc-btn').forEach(b => b.addEventListener('click', async () => {
-      if (!confirm('Archive ' + b.dataset.doc + ' from the approved corpus?')) return;
-      try {
-        await api('DELETE', '/api/regulatory/documents/' + encodeURIComponent(b.dataset.doc));
-        renderRegulatoryCorpus(el);
-      } catch(e) { alert('Failed: ' + e.message); }
-    }));
-    document.getElementById('ing-btn').addEventListener('click', async () => {
-      const file = document.getElementById('ing-file').files[0];
-      const msg = document.getElementById('ing-msg');
-      if (!file) { msg.textContent = 'Please choose a file'; return; }
-      const fd = new FormData();
-      fd.append('file', file);
-      if (document.getElementById('ing-title').value.trim()) fd.append('title', document.getElementById('ing-title').value.trim());
-      if (document.getElementById('ing-circular').value.trim()) fd.append('circular_no', document.getElementById('ing-circular').value.trim());
-      if (document.getElementById('ing-date').value.trim()) fd.append('issue_date', document.getElementById('ing-date').value.trim());
-      try {
-        msg.textContent = 'Ingesting...';
-        await api('POST', '/api/regulatory/documents', fd);
-        msg.textContent = 'Document ingested and index rebuilt.';
-        renderRegulatoryCorpus(el);
-      } catch(e) { msg.textContent = 'Failed: ' + e.message; }
-    });
-  });
+      <div class="conf-meter"><div class="conf-fill ${scoreCls}" style="width:${Math.round(r.score * 100)}%"></div></div>
+      ${(r.reasons || []).map(x => `<p class="text-xs text-rose mt-2">&#10007; ${esc(x)}</p>`).join('')}
+      ${(r.warnings || []).map(x => `<p class="text-xs text-amber mt-2">&#9888; ${esc(x)}</p>`).join('')}
+      ${(r.citation_refs && r.citation_refs.length)
+        ? `<div class="flex mt-2" style="gap:4px;flex-wrap:wrap">${r.citation_refs.map(cr =>
+            `<span class="badge badge-info font-mono" style="font-size:9px">${esc(cr)}</span>`).join('')}</div>`
+        : ''}
+    </div>`;
+}
+
+function renderRmResult(el, res) {
+  if (!el) return;
+  const recs = res.recommendations || [];
+  const eligible = recs.filter(r => r.verdict === 'eligible');
+  const escalated = recs.filter(r => r.verdict === 'escalate');
+
+  el.innerHTML = `
+    ${res.needs_human_override ? `
+      <div class="escalate-banner"><strong>&#9888; Human override required</strong>${res.escalation_reason ? ' — ' + esc(res.escalation_reason) : ''}
+        <div class="text-xs mt-2">Escalated items may only be presented to the customer after documented supervisor approval (SEBI suitability obligation).</div>
+      </div>` : ''}
+    <div class="card">
+      <h3>Recommendation Summary</h3>
+      <div class="answer-block">${esc(res.narrative || '')}</div>
+      ${(res.compliance_notes && res.compliance_notes.length)
+        ? `<h3>Risk Flags</h3>` + res.compliance_notes.map(n =>
+            `<p class="text-xs text-amber mb-2">&#9888; ${esc(n)}</p>`).join('')
+        : ''}
+    </div>
+    <div class="card">
+      <div class="flex-between mb-2">
+        <h3 style="margin:0">Suitable Products (${eligible.length})</h3>
+        <span class="text-xs text-slate">verdicts computed by deterministic suitability engine</span>
+      </div>
+      ${eligible.map(recCard).join('') || '<p class="text-xs text-slate">No eligible products for this query.</p>'}
+    </div>
+    ${escalated.length ? `<div class="card"><h3>Escalations (${escalated.length})</h3>${escalated.map(recCard).join('')}</div>` : ''}
+    <div class="notfound-box" style="border-color:rgba(129,140,248,.35);color:#a5b4fc">${esc((res.disclaimers || [])[0] || '')}</div>`;
+
+  el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
 function renderAuditLedger(el) {
   el.innerHTML = `<div class="spinner"></div>`;
-  loadData().then(() => {
+  loadLogs().then(() => {
     el.innerHTML = `
       <div class="card">
         <div class="flex-between mb-3">
-          <h3 style="margin:0">Audit Ledger</h3>
-          <span class="badge badge-success">Immutable Trail</span>
+          <h3 style="margin:0">Advisory Audit Ledger</h3>
+          <span class="badge badge-success">Accountability Trail</span>
         </div>
         <div style="max-height:600px;overflow-y:auto">
           ${state.logs.map(l => `
@@ -514,209 +467,110 @@ function renderAuditLedger(el) {
                 <span style="font-size:11px;color:#64748b;font-family:monospace">${esc(l.timestamp)}</span>
               </div>
               <p style="font-size:12px;color:#94a3b8;margin-top:6px">${esc(l.details)}</p>
-            </div>`).join('')}
+            </div>`).join('') || '<p class="text-xs text-slate">No entries yet.</p>'}
         </div>
       </div>`;
   });
 }
 
-function renderOfficerAdmin(el) {
-  el.innerHTML = `<div class="spinner"></div>`;
-  loadData().then(() => {
-    el.innerHTML = `
-      <div class="card">
-        <h3>Manage Users</h3>
-        <div style="max-height:500px;overflow-y:auto" id="admin-users-list"></div>
-      </div>`;
-    api('GET', '/api/users').then(res => {
-      const list = document.getElementById('admin-users-list');
-      if (!list) return;
-      const users = (res.users || []).filter(u => u.username !== 'admin');
-      list.innerHTML = users.map(u => `
-        <div style="background:#0f172a;padding:10px;border-radius:8px;border:1px solid #1e293b;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center">
-          <div>
-            <span style="font-size:13px;font-weight:600">${esc(u.name || u.username)}</span>
-            <span class="badge badge-info" style="margin-left:4px">${esc(u.role)}</span>
-            <div style="font-size:10px;color:#64748b;margin-top:2px">${esc(u.email)}</div>
-          </div>
-          <button class="btn btn-danger btn-sm del-user-btn" data-user="${esc(u.username)}">Remove</button>
-        </div>`).join('');
-      list.querySelectorAll('.del-user-btn').forEach(btn => {
-        btn.addEventListener('click', async () => {
-          if (!confirm('Remove user ' + btn.dataset.user + '?')) return;
-          try {
-            await api('DELETE', '/api/users/' + btn.dataset.user);
-            renderOfficerAdmin(el);
-          } catch(e) { alert('Failed: ' + e.message); }
-        });
-      });
-    });
-  });
-}
+// ═══════ CUSTOMER TRACK — GOAL-BASED GUIDANCE ═══════
+const GOALS = [
+  { id: 'education', label: "Children's Education" },
+  { id: 'retirement', label: 'Retirement Corpus' },
+  { id: 'wealth', label: 'Wealth Creation' },
+  { id: 'safety', label: 'Emergency & Safety Buffer' },
+  { id: 'tax', label: 'Tax Saving' }
+];
 
-// ═══════ CUSTOMER (Customer Track — Regulatory Transparency) ═══════
 function renderCustomerView() {
-  const tabs = [
-    { id: 'chat', label: 'Ask Assistant' },
-    { id: 'help', label: 'Help Center' }
-  ];
   const mc = document.getElementById('main-content');
-  mc.innerHTML = `<div class="tabs" id="cust-tabs">${tabs.map(t =>
-    `<button class="tab-btn ${t.id === state.customerTab ? 'active' : ''}" data-tab="${t.id}">${t.label}</button>`
-  ).join('')}</div><div id="cust-body"></div>`;
-  document.querySelectorAll('#cust-tabs .tab-btn').forEach(b => b.addEventListener('click', () => {
-    state.customerTab = b.dataset.tab;
-    document.querySelectorAll('#cust-tabs .tab-btn').forEach(x => x.classList.remove('active'));
-    b.classList.add('active');
-    showCustomerTab();
-  }));
-  showCustomerTab();
+  mc.innerHTML = `<div id="cust-body"></div>`;
+  renderGoalAdvisory(document.getElementById('cust-body'));
 }
 
-function showCustomerTab() {
-  const body = document.getElementById('cust-body');
-  if (state.customerTab === 'chat') renderCustomerChat(body);
-  else renderHelp(body);
-}
-
-function renderCustomerChat(el) {
-  if (!state.chatMessages) {
-    state.chatMessages = [];
-    state.chatLoading = false;
-    state.activeGrounding = null;
-  }
-
-  function buildMsg(msg) {
-    const isUser = msg.sender === 'user';
-    return `<div class="chat-msg ${isUser ? 'user' : 'ai'}">
-      <div class="avatar ${isUser ? 'user' : 'ai'}">${isUser ? '&#9993;' : '&#9881;'}</div>
-      <div>
-        <div class="bubble">${esc(msg.text)}</div>
-        ${msg.grounded ? `<div class="meta"><span class="timestamp">${msg.timestamp}</span><span class="badge badge-success" style="font-size:9px">Grounded</span></div>` : `<div class="meta"><span class="timestamp">${msg.timestamp}</span></div>`}
-      </div>
-    </div>`;
-  }
-
-  el.innerHTML = `
-    <div class="chat-container">
-      <div class="chat-pane">
-        <div class="chat-header">
-          <div style="display:flex;align-items:center;gap:10px">
-            <div style="background:#1a1b3a;border:1px solid #4f46e5;color:#818cf8;padding:6px;border-radius:8px;font-size:16px">&#9881;</div>
-            <div>
-              <div style="font-weight:600;font-size:13px;color:#fff">Regulatory Transparency Assistant</div>
-              <div style="font-size:10px;color:#94a3b8"><span style="display:inline-block;width:8px;height:8px;background:#10b981;border-radius:50%;margin-right:4px"></span>Grounded in approved disclosures</div>
-            </div>
+function renderGoalAdvisory(el) {
+  el.innerHTML = `<div class="spinner"></div>`;
+  ensureCustomers().then(() => {
+    el.innerHTML = `
+      <div class="chat-container">
+        <div>
+          <div class="card">
+            <h3>Your Profile</h3>
+            <label>Acting as customer (demo)</label>
+            <select id="goal-cust">${state.customers.map(c =>
+              `<option value="${esc(c.customer_id)}">${esc(c.name)} · ${esc(c.customer_id)}</option>`).join('')}</select>
           </div>
-          <span class="ai-badge">LLM</span>
-        </div>
-        <div class="chat-messages" id="chat-msg-container">
-          ${state.chatMessages.map(buildMsg).join('')}
-          ${state.chatLoading ? `<div class="chat-msg ai"><div class="avatar ai">&#9881;</div><div class="bubble" style="display:flex;align-items:center;gap:4px"><span class="loading-dot"></span><span class="loading-dot"></span><span class="loading-dot"></span>&nbsp; Processing...</div></div>` : ''}
-          ${state.chatMessages.length === 0 ? '<p style="color:#64748b;font-size:12px;text-align:center;margin-top:40px">Ask about KYC requirements, bank charges, or how to file a complaint.</p>' : ''}
-          <div id="chat-end"></div>
-        </div>
-        <form class="chat-input" id="chat-form">
-          <input type="text" id="chat-input-field" placeholder="Ask about KYC, charges, complaints..." autocomplete="off">
-          <button type="submit" id="chat-send-btn" disabled>&#10148;</button>
-        </form>
-      </div>
-      <div class="chat-sidebar">
-        <h4>About this assistant</h4>
-        <p style="font-size:10px;color:#64748b;line-height:1.6">Answers are generated only from approved regulatory disclosures published by the bank. No internal terminology, no legal interpretations, and complex questions are redirected to a bank official.</p>
-        <div style="flex:1;margin-top:12px">
+          <div class="card">
+            <h3>Your Goal</h3>
+            <div class="form-group">
+              <label>What are you saving for?</label>
+              <select id="goal-select">${GOALS.map(g => `<option value="${g.id}">${esc(g.label)}</option>`).join('')}</select>
+            </div>
+            <div class="form-group"><label>Amount available (optional, ₹)</label><input type="number" id="goal-amount" placeholder="e.g. 50000" min="0"></div>
+            <button class="btn btn-primary" style="width:100%" id="goal-btn">Get Guidance</button>
+          </div>
           <div class="clause-box">
-            <span class="clause-tag">Safe Response</span>
-            <div class="clause-text">This information is for general guidance only and is not legal advice. For help specific to your account, please contact your bank.</div>
-            <div class="clause-auth">&#10003; Compliance-safe by design</div>
+            <span class="clause-tag">Safe by design</span>
+            <div class="clause-text">Guidance is personalized to your verified profile. High-risk products are filtered out or escalated to a human advisor automatically. This is guidance, not investment advice.</div>
+            <div class="clause-auth">&#10003; Non-promissory language enforced</div>
           </div>
         </div>
-      </div>
-    </div>`;
+        <div id="goal-result"><p class="text-sm text-slate">Choose a goal and press "Get Guidance" to receive personalized, compliance-checked guidance.</p></div>
+      </div>`;
 
-  const end = document.getElementById('chat-end');
-  if (end) end.scrollIntoView();
-
-  document.getElementById('chat-input-field').addEventListener('input', function() {
-    document.getElementById('chat-send-btn').disabled = !this.value.trim();
-  });
-
-  document.getElementById('chat-form').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const input = document.getElementById('chat-input-field');
-    const msg = input.value.trim();
-    if (!msg || state.chatLoading) return;
-    input.value = '';
-    document.getElementById('chat-send-btn').disabled = true;
-
-    state.chatMessages.push({ id: 'msg-user-' + Date.now(), sender: 'user', text: msg, timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) });
-    state.chatLoading = true;
-    renderCustomerChat(el);
-
-    try {
-      const res = await api('POST', '/api/regulatory/customer-query', { question: msg });
-      state.chatMessages.push({
-        id: 'msg-ai-' + Date.now(),
-        sender: 'assistant',
-        text: res.answer || 'I could not find this information in our published regulatory disclosures. Please contact your bank for assistance.',
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        grounded: res.answered === true
-      });
-      if (res.disclaimer) {
-        state.chatMessages.push({
-          id: 'msg-dis-' + Date.now(),
-          sender: 'assistant',
-          text: res.disclaimer,
-          timestamp: '',
-          grounded: false
-        });
+    document.getElementById('goal-btn').addEventListener('click', async () => {
+      const cid = document.getElementById('goal-cust').value;
+      const goal = document.getElementById('goal-select').value;
+      const amountRaw = document.getElementById('goal-amount').value;
+      const amount = amountRaw ? parseFloat(amountRaw) : null;
+      const btn = document.getElementById('goal-btn');
+      btn.disabled = true; btn.textContent = 'Preparing guidance…';
+      const resultEl = document.getElementById('goal-result');
+      resultEl.innerHTML = `<div class="chat-pane" style="padding:40px;text-align:center"><span class="loading-dot"></span> <span class="loading-dot"></span> <span class="loading-dot"></span>&nbsp; Preparing your personalized guidance…</div>`;
+      try {
+        const res = await api('POST', '/api/advisory/customer-goal',
+          { customer_id: cid, goal, amount });
+        renderGoalResult(resultEl, res);
+      } catch(e) {
+        resultEl.innerHTML =
+          `<div class="notfound-box">Could not prepare guidance: ${esc(e.message)}</div>`;
       }
-    } catch(err) {
-      state.chatMessages.push({
-        id: 'msg-ai-err-' + Date.now(),
-        sender: 'assistant',
-        text: 'Sorry, I encountered an error. Please try again or contact your bank.',
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        grounded: false
-      });
-    }
-    state.chatLoading = false;
-    renderCustomerChat(el);
+      btn.disabled = false; btn.textContent = 'Get Guidance';
+    });
+  }).catch(e => {
+    el.innerHTML = `<div class="notfound-box">Advisory service unavailable: ${esc(e.message)}</div>`;
   });
 }
 
-function renderHelp(el) {
-  const q = state.faqs;
+function renderGoalResult(el, res) {
+  const recs = res.recommendations || [];
   el.innerHTML = `
-    <div class="card">
-      <h3>Help Center</h3>
-      <div class="form-group">
-        <input type="text" id="faq-search" placeholder="Search FAQs..." style="max-width:500px">
+    <div class="chat-pane" style="padding:0">
+      <div class="chat-header">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="background:#1a1b3a;border:1px solid #4f46e5;color:#818cf8;padding:6px;border-radius:8px;font-size:16px">&#9878;</div>
+          <div>
+            <div style="font-weight:600;font-size:13px;color:#fff">Personalized Guidance</div>
+            <div style="font-size:10px;color:#94a3b8"><span style="display:inline-block;width:8px;height:8px;background:#10b981;border-radius:50%;margin-right:4px"></span>Suitability-checked · risk-aware</div>
+          </div>
+        </div>
+        <span class="badge badge-info" style="font-size:9px">${esc(res.goal || '')}</span>
       </div>
-      <div id="faq-list">
-        ${q.map((f, i) => `
-          <div style="border-bottom:1px solid #1e293b;padding:12px 0">
-            <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer" data-faq="${i}">
-              <span style="font-size:13px">${esc(f.question)}</span>
-              <span style="color:#64748b;font-size:18px" class="faq-arrow">+</span>
+      <div style="padding:16px;display:flex;flex-direction:column;gap:14px">
+        <div class="chat-msg ai"><div class="avatar ai">&#9878;</div><div class="bubble">${esc(res.narrative || '')}</div></div>
+        ${recs.length ? `
+          <div>
+            <h4 style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Options the system found suitable for you</h4>
+            <div class="flex" style="gap:6px;flex-wrap:wrap">
+              ${recs.map(r => `<span class="badge badge-success" style="padding:6px 12px;font-size:11px">&#10003; ${esc(r.name)}</span>`).join('')}
             </div>
-            <div class="faq-answer hidden" style="font-size:12px;color:#94a3b8;margin-top:8px;line-height:1.5">${esc(f.answer)}</div>
-          </div>`).join('')}
+          </div>` : `<p class="text-xs text-amber">No products could be confirmed suitable right now — please consult a relationship manager.</p>`}
+        <div style="background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.2);border-radius:10px;padding:12px">
+          ${(res.disclaimers || []).map(d => `<p class="text-xs text-amber mb-2" style="line-height:1.6">&#9878; ${esc(d)}</p>`).join('')}
+        </div>
       </div>
     </div>`;
-  document.querySelectorAll('[data-faq]').forEach(el2 => {
-    el2.addEventListener('click', () => {
-      const ans = el2.nextElementSibling;
-      ans.classList.toggle('hidden');
-      el2.querySelector('.faq-arrow').textContent = ans.classList.contains('hidden') ? '+' : '\u2212';
-    });
-  });
-  document.getElementById('faq-search').addEventListener('input', (e) => {
-    const q = e.target.value.toLowerCase();
-    document.querySelectorAll('[data-faq]').forEach(el2 => {
-      el2.parentElement.style.display = el2.textContent.toLowerCase().includes(q) ? '' : 'none';
-    });
-  });
+  el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
 // ─── Start ───

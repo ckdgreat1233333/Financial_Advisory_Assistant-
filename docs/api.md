@@ -1,6 +1,24 @@
-# API Reference — Regulatory & Compliance Copilot
+# API Reference — Personalized Financial Advisory Assistant
 
 All endpoints return JSON. The complete OpenAPI schema is available at `/docs` (Swagger UI) when the server is running.
+
+## Advisory Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/advisory/customers?search=` | Searchable customer directory (id, name, age, city, appetite, KYC) |
+| GET | `/api/advisory/customers/{id}/profile` | Profile with derived features, computed risk capacity, life stage, segment + summary text |
+| POST | `/api/advisory/rm-query` | **Business track** `{customer_id, question}` → narrative, eligible+escalated candidates with verdicts/reasons/warnings/citations, `needs_human_override`, RM disclaimer |
+| POST | `/api/advisory/customer-goal` | **Customer track** `{customer_id, goal, amount?, horizon_months?}` → plain-language guidance, eligible options only, three disclaimers; internal retrieval hidden |
+| GET | `/api/advisory/products` | Structured product catalog |
+| GET | `/api/advisory/segments` | Cluster summaries (label + avg stats per segment) |
+| GET | `/api/advisory/sessions?limit=` | Advisory audit trail |
+
+Goals: `education`, `retirement`, `wealth`, `safety`, `tax`.
+
+---
+
+## Regulatory Copilot Endpoints
 
 The copilot exposes **two response tracks**, both grounded in the approved regulatory corpus:
 

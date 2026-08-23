@@ -1,85 +1,91 @@
-# Regulatory & Compliance Copilot
+# Personalized Financial Advisory Assistant
 
-An enterprise-grade **Regulatory & Compliance Copilot** for banking. It answers compliance and customer questions **only** from an approved, version-controlled corpus of RBI circulars and internal policies — using Retrieval-Augmented Generation (RAG) with strict hallucination prevention, citation grounding, confidence scoring, contradiction detection, and human-in-the-loop escalation.
+An enterprise-grade **Personalized Financial Advisory Assistant** for banking. It supports **relationship managers (RM decision support)** and **customers (goal-based guidance)** with responsible, explainable, compliance-aligned GenAI — every recommendation is decided by a deterministic suitability engine, grounded in an approved product-knowledge RAG layer, and verbalized (never invented) by the LLM.
 
-> In compliance systems, silence is better than hallucination.
+> In financial advisory, explainability is more important than intelligence.
 
 ---
 
 ## What it does
 
-The copilot exposes **two deliberately separated response tracks**:
+The assistant exposes **two deliberately separated response flows**:
 
 | Track | Audience | What you get |
 |-------|----------|--------------|
-| **Internal** | Compliance & audit teams | Grounded answer + verifiable citations, confidence score, retrieval excerpts, escalation recommendation |
-| **Customer** | Bank customers | Plain-language answer + disclaimer, complex questions redirected to a bank official, **no internal details exposed** |
+| **Business track** | Relationship managers | Customer profile summary, segment, engine-scored product recommendations with reasoning, risk flags, mis-selling guardrails, human-override/escalation status |
+| **Customer track** | Bank customers | Goal-based guidance in plain language, suitable options only, honest trade-offs, mandatory advisory disclaimers, human-advisor nudge |
 
-Both tracks answer exclusively from the approved corpus. If no relevant clause is retrieved, the copilot refuses to answer rather than guess — and flags the query for human review.
+Blocked products are never shown to customers. Escalated products require documented supervisor approval before customer presentation. Every advisory interaction is written to an immutable audit trail.
 
-### Safety gates (single source of truth in `regulatory/confidence.py`)
+### Core principle: the rules decide, the LLM explains
 
-| Gate | Threshold | Behaviour |
-|------|-----------|-----------|
-| Retrieval floor | top-1 similarity < 0.45 | LLM is **never called** → "Information not found" |
-| Escalation | combined confidence < 0.55 | Answer flagged for compliance review |
-| Confident | combined confidence ≥ 0.75 | Delivered with `High` confidence |
-| Contradiction | cross-document similarity in 0.70–0.95 | Possible conflict → escalate for human adjudication |
+```
+SuitabilityEngine (deterministic)  →  verdict per product
+        │  eligible / escalate / blocked
+        ▼
+ProductKnowledgeStore (RAG)        →  approved narrative context
+        ▼
+RecommendationAgent (GenAI)        →  phrasing ONLY, strict JSON / guided prose
+        ▼
+Compliance scrubber                →  non-promissory language enforced AFTER the LLM
+```
 
-Combined confidence blends retrieval and LLM self-assessment: `0.6 × retrieval + 0.4 × llm`. Every citation must reference a clause that was actually retrieved; ungrounded citations force escalation.
+If the LLM fails or drifts, the system degrades to deterministic template narratives — it never blocks advice delivery and never invents products.
 
 ---
 
 ## Architecture
 
 ```
-┌───────────────────────────────────────────────────────────────────────┐
-│                    CLIENT LAYER (Vanilla JS SPA)                      │
-│                 served at "/" by app.py (static/index.html)           │
-│   ┌──────────────────────────────┐  ┌──────────────────────────────┐  │
-│   │ Officer Portal               │  │ Customer Portal              │  │
-│   │ - Internal Compliance Query  │  │ - Transparency Assistant     │  │
-│   │ - Regulatory Corpus mgmt     │  │   (plain language + notice)  │  │
-│   │ - Audit log + user admin     │  └──────────────────────────────┘  │
-│   └───────────────┬──────────────┘                                     │
-│                   │  HTTP REST (JSON)                                  │
-└───────────────────┼───────────────────────────────────────────────────┘
-                    ▼
-            ┌────────────────┐
-            │  FastAPI app   │  app.py  (port 8000)
-            │  (app.py)      │
-            └───────┬────────┘
-                    │
-         ┌──────────┴───────────┐
-         ▼                      ▼
-┌──────────────────┐   ┌──────────────────────┐
-│ RegulatoryCopilot│   │ agents/              │
-│ (facade)         │   │  compliance_agent    │  internal track
-│                  │   │  customer_reg_agent  │  customer track
-└────────┬─────────┘   └──────────────────────┘
-         │
-         ▼
-┌───────────────────────────────────────────────────┐
-│  RegulatoryKnowledgeStore (regulatory/store.py)   │
-│  corpus → clause-chunk → embed → FAISS index      │
-│  + manifest JSON sidecar + SQLite registry        │
-└───────────────────────────────────────────────────┘
-         │
-         ▼
-┌───────────────────────────────────────────────────┐
-│  LLM Service (Groq via OpenAI SDK)                │
-│  openai/gpt-oss-120b @ api.groq.com/openai/v1     │
-│  strict JSON output, citations, confidence        │
-└───────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────────┐
+│                        CLIENT LAYER (Vanilla JS SPA)                     │
+│                       served at "/" by app.py                            │
+│   ┌──────────────────────────────┐    ┌─────────────────────────────┐    │
+│   │ RM CONSOLE                   │    │ CUSTOMER PORTAL             │    │
+│   │ - customer list + profiles   │    │ - goal guidance (education, │    │
+│   │ - advisory queries           │    │   retirement, wealth…)      │    │
+│   │ - verdicts, flags, override  │    │ - plain language + disclaimers │
+│   └──────────────┬───────────────┘    └──────────────┬──────────────┘    │
+└──────────────────┼────────────────────────────────────┼──────────────────┘
+                   ▼                                    ▼
+            ┌──────────────────────── FastAPI (app.py) ─────────────────┐
+            │  /api/advisory/rm-query      /api/advisory/customer-goal  │
+            │  /api/advisory/customers/:id/profile                      │
+            │  + auth (role portals) · audit ledger · sessions          │
+            └───────────────────────────┬───────────────────────────────┘
+                                        ▼
+                    ┌───────────────────────────────────────┐
+                    │  AdvisoryService (facade)             │
+                    │  services/advisory_service.py         │
+                    └───┬───────────┬──────────────┬────────┘
+                        ▼           ▼              ▼
+     ┌────────────────────┐ ┌──────────────────┐ ┌──────────────────────┐
+     │ profiling/         │ │ guardrails/      │ │ agents/              │
+     │ profile_builder    │ │ suitability.py   │ │ recommendation_agent │
+     │ (features, risk    │ │ hard constraints │ │ LLM verbalization    │
+     │  score, life stage)│ │ escalation rules │ │ strict JSON fallback │
+     │ segmentation.py    │ │ compliance.py    │ └──────────┬───────────┘
+     │ MiniLM + KMeans    │ │ non-promissory   │            │
+     └─────────┬──────────┘ └────────┬─────────┘            │
+               ▼                     ▼                      ▼
+     ┌─────────────────────────────────────────────────────────────────┐
+     │  KNOWLEDGE LAYER (version-controlled, hash-verified corpus)     │
+     │  data/products/*.txt → ProductKnowledgeStore (FAISS)            │
+     └─────────────────────────────────────────────────────────────────┘
+               ▼
+     SQLite: users · customers · transactions · products ·
+             advisory_sessions · audit_logs
 ```
 
 ### Data flow
 
-1. **Ingest** — a document is placed in `data/regulatory/`; the store hashes it, parses its header metadata + numbered clauses, and embeds each clause.
-2. **Index** — embeddings go into a FAISS `IndexFlatL2` (384-dim MiniLM vectors), with a JSON manifest sidecar mapping every chunk to its source document. The index is rebuilt **only** when a file's hash changes or new files appear → the store is always reproducible from the approved corpus.
-3. **Retrieve** — a query is embedded and the top-k clauses are retrieved with similarity scores.
-4. **Answer** — the copilot gates on retrieval confidence, then prompts the LLM with only the retrieved clauses as context, parses the structured JSON response, grounds every citation against what was actually retrieved, and decides whether to answer or escalate.
-5. **Audit** — every query, ingest, and archive action is written to an immutable audit log.
+1. **Ingest** — synthetic customers + 12 months of transactions (`scripts/generate_data.py`) are seeded into SQLite; product catalog lives as structured attributes (`products.csv` → `products` table) plus narrative clause documents in `data/products/`.
+2. **Profile** — `ProfileBuilder` aggregates demographics + transactions into traceable features: savings rate, monthly surplus, EMI burden, emergency buffer, life stage, computed risk capacity.
+3. **Segment** — profile summaries are embedded (MiniLM) and clustered (KMeans k=5); clusters get explainable rank-based names ("Pre-Retirement Preservers", "High-Saving Wealth Builders", …).
+4. **Evaluate** — the suitability engine runs hard-constraint checks per product (KYC gate, risk-grade vs binding capacity, lock-in vs horizon, affordability, senior-citizen & first-time-investor protections).
+5. **Ground** — for each surviving candidate, clause-level retrieval pulls approved product literature; guardrail decisions cite SEBI/RBI clause IDs from the regulatory corpus.
+6. **Verbalize** — the agent phrases results within a strict output contract; the compliance scrubber enforces non-promissory language on every customer-facing string after generation.
+7. **Audit** — every query is logged to `advisory_sessions` and the audit ledger.
 
 ---
 
@@ -87,163 +93,113 @@ Combined confidence blends retrieval and LLM self-assessment: `0.6 × retrieval 
 
 | Component | Technology |
 |-----------|------------|
-| **Backend** | Python 3.12, FastAPI, Uvicorn |
-| **Frontend** | Vanilla JS SPA (`static/index.html`) |
-| **LLM** | Groq via the OpenAI SDK (`openai/gpt-oss-120b`, endpoint-configurable) |
-| **Embeddings** | Sentence Transformers (`all-MiniLM-L6-v2`, 384-dim) |
-| **Vector Store** | FAISS (`IndexFlatL2`) + JSON manifest sidecar |
-| **Database** | SQLite (`database/data/regulatory_copilot.db`) |
-| **Docs** | `.txt`, `.md`, `.pdf` (PyMuPDF) |
-| **Auth** | Login/register with role-based portal selection |
-| **Audit / Logging** | Audit log table, Python logging |
+| Backend | Python 3.12, FastAPI, Uvicorn |
+| Frontend | Vanilla JS SPA (`static/index.html`) |
+| LLM | Groq via OpenAI SDK (`openai/gpt-oss-120b`, endpoint-configurable) |
+| Embeddings | Sentence Transformers (`all-MiniLM-L6-v2`, shared instance) |
+| Vector store | FAISS (`IndexFlatL2`) over the product corpus |
+| Segmentation | scikit-learn KMeans over normalized embeddings |
+| Database | SQLite (`database/data/advisory.db`) |
+| Auth/Audit | Role-based portals, immutable audit ledger |
 
 ---
 
 ## Project Structure
 
 ```
-LoanProcessingAssistant/
-├── app.py                        # FastAPI entry point (serves static/index.html)
-├── config.py                     # LLM provider / endpoint / model / key
-├── agents/                       # Track-specific agents
-│   ├── compliance_agent.py       # Internal (compliance & audit) track
-│   └── customer_reg_agent.py     # Customer transparency track
-├── services/                     # Business logic
-│   ├── regulatory_copilot.py     # Facade: retrieval, gating, grounding, escalation
-│   ├── llm_service.py            # Groq/OpenAI SDK communication
-│   ├── prompt_service.py         # Prompt template loading
-│   └── audit_service.py          # Audit trail
-├── regulatory/                   # RAG core (banking domain)
-│   ├── store.py                  # Version-controlled knowledge store (FAISS + manifest)
-│   ├── chunker.py                # Header metadata + clause-level chunking
-│   ├── embedder.py               # MiniLM embeddings
-│   ├── confidence.py             # Thresholds + confidence scoring + conflict detection
-│   └── parsing.py                # JSON extraction + sanitization helpers
-├── models/
-│   ├── regulatory.py             # RegulatoryDocument / Chunk / Citation / Answer
-│   └── audit.py
-├── database/                     # SQLite (db.py) + FAISS wrapper (faiss_db.py)
-├── data/
-│   ├── regulatory/               # APPROVED corpus (RBI circulars, internal policies)
-│   └── indexes/                  # regulatory_index.bin + regulatory_chunks.json
+├── app.py                          # FastAPI entry point + advisory endpoints
+├── config.py                       # LLM provider / model / key
+├── scripts/
+│   └── generate_data.py            # Deterministic synthetic banking data
+├── profiling/                      # Customer pipeline
+│   ├── profile_builder.py          # Features + computed risk capacity
+│   └── segmentation.py             # Embedding + KMeans segments
+├── advisory/                       # Product knowledge RAG + shared infra
+│   ├── knowledge_base.py           # Versioned corpus store (hash → chunk → FAISS)
+│   ├── product_store.py            # Product catalog retrieval
+│   ├── embedder.py                 # Shared MiniLM wrapper
+│   └── chunker.py                  # Header + clause chunking
+├── guardrails/                     # Mis-selling prevention
+│   ├── suitability.py              # Deterministic verdicts + scoring
+│   └── compliance.py               # Non-promissory scrubber + disclaimers
+├── agents/
+│   └── recommendation_agent.py     # GenAI explanation layer (never decides)
+├── services/
+│   ├── advisory_service.py         # Facade wiring both tracks
+│   └── llm_service.py, prompt_service.py
+├── models/advisory.py              # Profile, candidates, chunks, responses
 ├── prompts/
-│   ├── regulatory_compliance_prompt.txt
-│   └── regulatory_customer_prompt.txt
-├── static/index.html             # SPA (served at "/")
-├── tests/test_regulatory.py      # 21 tests (chunker, gating, tracks, store)
-├── utils/enums.py                # AuditSeverity, AgentType
-└── requirements.txt
+│   ├── rm_advisory_prompt.txt
+│   └── customer_guidance_prompt.txt
+├── data/
+│   ├── customers/                  # customers.csv + transactions.csv (synthetic)
+│   ├── products/                   # products.csv + 13 narrative corpus docs
+│   ├── goals/goal_definitions.json
+│   └── indexes/                    # product_index.bin + product_chunks.json
+├── static/index.html               # RM console + customer portal SPA
+├── tests/test_advisory.py          # 28 tests
+└── docs/architecture.md, governance.md, api.md
 ```
 
 ---
 
 ## Quick Start
 
-### Prerequisites
-
-- Python 3.12+
-- A Groq API key (or any OpenAI-compatible endpoint)
-
-### Setup
-
 ```bash
-# 1. Python virtual environment
 python -m venv .venv
-.\.venv\Scripts\activate        # Windows
-# source .venv/bin/activate     # Linux/Mac
-
-# 2. Install dependencies
+.\.venv\Scripts\activate
 pip install -r requirements.txt
 
-# 3. Configure the LLM key in .env
+# .env
 # GROQ_API_KEY=your-groq-api-key
 
-# 4. Run the server
+python scripts\generate_data.py      # regenerate synthetic data (optional)
 uvicorn app:app --reload --port 8000
 ```
 
-The database schema, seed users, FAQ, and regulatory registry are initialized automatically on first run. The vector index builds itself from `data/regulatory/` and is cached for subsequent startups.
-
-### Demo Login
-
-Open `http://localhost:8000` and log in with the seeded officer account:
+Open `http://localhost:8000`. Seeded login:
 
 | Portal | Username | Password |
 |--------|----------|----------|
-| Compliance Officer / Customer | `admin` | `admin123` |
+| Relationship Manager / Customer | `admin` | `admin123` |
 
 ---
 
-## Regulatory Corpus
-
-The approved corpus lives in `data/regulatory/`. Each file is a plain-text document with a metadata header and numbered clauses:
-
-```
-Circular No: RBI/2025-26/09
-Date: 01-Aug-2025
-Subject: Master Direction - Know Your Customer (KYC)
-Version: v1.0
-Category: circular
-
-1. Applicability
-These directions apply to all banks.
-
-1.1 Customer Due Diligence
-...
-```
-
-Corpus documents (startup):
-
-| Doc | Type |
-|-----|------|
-| `rbi_kyc_master_direction` | RBI circular |
-| `rbi_kyc_updation_amendment` | RBI circular |
-| `rbi_charges_disclosure_circular` | RBI circular |
-| `rbi_customer_grievance_circular` | RBI circular |
-| `internal_policy_kyc` | Internal policy |
-| `audit_checklist_kyc` | Audit checklist |
-
-New documents can be added through the **Regulatory Corpus** screen (upload `.txt` / `.md` / `.pdf`), which stores the file and rebuilds the index immediately, or archived from the same screen. Every ingest/archive is audit-logged.
-
----
-
-## API Endpoints
-
-See `docs/api.md` for details.
+## API Endpoints (advisory)
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| POST | `/api/auth/login` | Login (portal: `officer` / `customer`) |
-| POST | `/api/auth/register` | Register a user |
-| POST | `/api/auth/logout` | Logout |
-| GET  | `/api/auth/me` | Current user |
-| GET/PATCH/DELETE | `/api/users...` | User management |
-| GET  | `/api/audit-logs` | Immutable audit ledger |
-| GET  | `/api/faq` | FAQ list |
-| POST | `/api/regulatory/query` | **Internal** track — citations + confidence + escalation |
-| POST | `/api/regulatory/customer-query` | **Customer** track — plain language + disclaimer |
-| GET  | `/api/regulatory/documents` | List the approved regulatory corpus |
-| POST | `/api/regulatory/documents` | Ingest a new approved document (multipart upload) |
-| DELETE | `/api/regulatory/documents/{doc_id}` | Archive a document + rebuild index |
+| GET | `/api/advisory/customers?search=` | Searchable customer directory |
+| GET | `/api/advisory/customers/{id}/profile` | Full profile + derived features + summary |
+| POST | `/api/advisory/rm-query` | **Business track**: `{customer_id, question}` → recommendations, verdicts, flags, override status |
+| POST | `/api/advisory/customer-goal` | **Customer track**: `{customer_id, goal, amount?, horizon_months?}` → plain-language guidance + disclaimers |
+| GET | `/api/advisory/products` | Product catalog (structured attributes) |
+| GET | `/api/advisory/segments` | Segment summaries (cluster stats + labels) |
+| GET | `/api/advisory/sessions` | Advisory audit trail |
 
 ---
 
-## Design Principles
+## Guardrails Summary
 
-1. **Silence over hallucination** — if no approved clause supports an answer, the copilot says "Information not found" and escalates; it never guesses.
-2. **Grounded citations** — every citation must point to a clause that was actually retrieved; ungrounded citations force escalation.
-3. **Human-in-the-loop** — low confidence, contradictions, and ungrounded answers always reach a compliance officer.
-4. **Two response tracks** — customers get plain language and a disclaimer; internal teams get provenance and escalation. Internal retrieval details are never exposed to customers.
-5. **Version-controlled knowledge** — the index is always reproducible from the approved corpus; any change re-validates the store.
-6. **Rules in one place** — confidence thresholds and conflict bands live in `regulatory/confidence.py` as explicit constants.
-7. **Compliance-by-design** — every query, ingest, and archive is recorded in the audit ledger.
+| Control | Behavior |
+|---------|----------|
+| KYC gate | Non-verified KYC ⇒ all recommendations blocked (RBI fair-practices §2) |
+| Risk-grade fit | Product grade > capacity by 2+ steps ⇒ **blocked**; 1 step ⇒ **escalate** w/ supervisor approval (SEBI suitability §1, §3) |
+| Lock-in vs horizon | Lock-in beyond stated horizon ⇒ blocked |
+| Affordability | Amount below minimum ticket ⇒ blocked; above comfortable commitment ⇒ warning |
+| Vulnerable customers | Senior citizens (65+) & first-time investors + high-risk product ⇒ mandatory escalation (RBI §2.1) |
+| Concentration cap | Max 2 products per category surfaced; allocation caps respected |
+| Non-promissory language | Banned claims scrubbed from LLM output post-generation; violations logged |
+| Human-in-the-loop | Escalations surface in RM console with explicit override requirement |
+
+Guardrail verdicts carry provenance tags referencing the SEBI/RBI principles they enforce; the full regulatory mapping lives in `docs/governance.md`.
 
 ---
 
 ## Tests
 
 ```bash
-pytest tests/test_regulatory.py -q
+pytest tests/ -q
 ```
 
-The suite covers the chunker, JSON parsing, confidence gating, both response tracks, citation grounding, contradiction escalation, model serialization, and a real ingest→retrieve round-trip with FAISS. **21 tests.**
+28 tests: profile features, segmentation determinism/uniqueness, product-store grounding, every guardrail path (KYC/risk-grade/lock-in/affordability/senior/first-time/protection-gap), concentration cap, non-promissory scrubbing, both response tracks, and session logging.
